@@ -26,6 +26,37 @@ export default function CertificateDetails() {
     enabled: !!id,
   });
 
+  const downloadPdf = async () => {
+    if (!id) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+      const response = await fetch(`${apiUrl}/certificates/${id}/pdf`);
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF download error:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
+  const previewPdf = () => {
+    if (!id) return;
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+    const url = `${apiUrl}/certificates/${id}/preview`;
+    window.open(url, '_blank');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -298,13 +329,19 @@ export default function CertificateDetails() {
               Quick Actions
             </h3>
             <div className="space-y-3">
-              <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <button 
+                onClick={downloadPdf}
+                className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
                 <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
                 Download PDF
               </button>
-              <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <button 
+                onClick={previewPdf}
+                className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
                 <DocumentTextIcon className="h-4 w-4 mr-2" />
-                View Certificate
+                Preview PDF
               </button>
               <button className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <PencilIcon className="h-4 w-4 mr-2" />

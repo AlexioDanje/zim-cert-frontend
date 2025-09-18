@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from './ThemeToggle';
+import type { UserRole } from '../types/auth';
 import {
   HomeIcon,
   DocumentTextIcon,
@@ -12,6 +13,7 @@ import {
   UserGroupIcon,
   AcademicCapIcon,
   BuildingOfficeIcon,
+  BuildingOffice2Icon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
@@ -19,9 +21,30 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  requiredRoles: (UserRole | 'public')[];
+  requiredPermissions: string[];
+}
+
+const getRoleDisplayName = (role?: UserRole): string => {
+  const roleNames = {
+    ministry_admin: 'Ministry Administrator',
+    institution_admin: 'Institution Administrator',
+    institution_staff: 'Institution Staff',
+    auditor: 'Government Auditor',
+    employer: 'Employer',
+    student: 'Student',
+    public: 'Public User'
+  };
+  return role ? roleNames[role] || role : 'Public User';
+};
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole, hasPermission } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,49 +54,109 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/');
   };
 
-  const getNavigationForRole = (role: string) => {
-    const baseNavigation = [
-      { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: ['institution', 'admin', 'employer', 'student', 'public'] },
-    ];
-
-    const institutionNavigation = [
-      { name: 'Certificates', href: '/certificates', icon: DocumentTextIcon, roles: ['institution', 'admin'] },
-      { name: 'Issue Certificate', href: '/issue', icon: PlusIcon, roles: ['institution', 'admin'] },
-      { name: 'Bulk Operations', href: '/bulk', icon: ChartBarIcon, roles: ['institution', 'admin'] },
-      { name: 'Templates', href: '/templates', icon: DocumentTextIcon, roles: ['institution', 'admin'] },
-      { name: 'Programs', href: '/programs', icon: AcademicCapIcon, roles: ['institution', 'admin'] },
-      { name: 'Students', href: '/students', icon: UserGroupIcon, roles: ['institution', 'admin'] },
-      { name: 'Reports', href: '/reports', icon: ChartBarIcon, roles: ['institution', 'admin'] },
-    ];
-
-    const verificationNavigation = [
-      { name: 'Verify Certificate', href: '/verification', icon: ShieldCheckIcon, roles: ['institution', 'employer', 'student', 'admin', 'public'] },
-    ];
-
-    const studentNavigation = [
-      { name: 'My Certificates', href: '/certificates', icon: DocumentTextIcon, roles: ['student'] },
-    ];
-
-    const employerNavigation = [
-      { name: 'Verification History', href: '/verification', icon: ChartBarIcon, roles: ['employer'] },
-    ];
-
-    switch (role) {
-      case 'admin':
-      case 'institution':
-        return [...baseNavigation, ...institutionNavigation, ...verificationNavigation];
-      case 'employer':
-        return [...baseNavigation, ...verificationNavigation, ...employerNavigation];
-      case 'student':
-        return [...baseNavigation, ...studentNavigation, ...verificationNavigation];
-      case 'public':
-        return [...baseNavigation, ...verificationNavigation];
-      default:
-        return baseNavigation;
+  // Define all possible navigation items with their required roles and permissions
+  const getAllNavigationItems = (): NavigationItem[] => [
+    { 
+      name: 'Dashboard', 
+      href: '/dashboard', 
+      icon: HomeIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor', 'employer', 'student', 'public'],
+      requiredPermissions: []
+    },
+    { 
+      name: 'Government Dashboard', 
+      href: '/government', 
+      icon: ChartBarIcon, 
+      requiredRoles: ['ministry_admin', 'auditor'],
+      requiredPermissions: ['reports:read']
+    },
+    { 
+      name: 'Institutions', 
+      href: '/institutions', 
+      icon: BuildingOffice2Icon, 
+      requiredRoles: ['ministry_admin'],
+      requiredPermissions: [] // Ministry admin has '*' permission, so no specific check needed
+    },
+    { 
+      name: 'Certificates', 
+      href: '/certificates', 
+      icon: DocumentTextIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor'],
+      requiredPermissions: ['certificates:read']
+    },
+    { 
+      name: 'Issue Certificate', 
+      href: '/issue', 
+      icon: PlusIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff'],
+      requiredPermissions: ['certificates:create']
+    },
+    { 
+      name: 'Bulk Operations', 
+      href: '/bulk', 
+      icon: ChartBarIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin'],
+      requiredPermissions: ['bulk:create']
+    },
+    { 
+      name: 'Programs', 
+      href: '/programs', 
+      icon: AcademicCapIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor'],
+      requiredPermissions: ['programs:read']
+    },
+    { 
+      name: 'Students', 
+      href: '/students', 
+      icon: UserGroupIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor'],
+      requiredPermissions: ['students:read']
+    },
+    { 
+      name: 'Reports', 
+      href: '/reports', 
+      icon: ChartBarIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'auditor'],
+      requiredPermissions: ['reports:read']
+    },
+    { 
+      name: 'Verify Certificate', 
+      href: '/verification', 
+      icon: ShieldCheckIcon, 
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor', 'employer', 'student', 'public'],
+      requiredPermissions: []
+    },
+    { 
+      name: 'My Certificates', 
+      href: '/certificates', 
+      icon: DocumentTextIcon, 
+      requiredRoles: ['student'],
+      requiredPermissions: ['certificates:read:own']
+    },
+    { 
+      name: 'Verification History', 
+      href: '/verification', 
+      icon: ChartBarIcon, 
+      requiredRoles: ['employer'],
+      requiredPermissions: ['verification:read']
     }
-  };
+  ];
 
-  const navigation = getNavigationForRole(user?.role || 'public');
+  // Professional navigation filtering based on user role and permissions
+  const allNavigationItems = getAllNavigationItems();
+  
+  const navigation = !user 
+    ? allNavigationItems.filter(item => item.requiredRoles.includes('public'))
+    : allNavigationItems.filter(item => {
+        // Check if user has required role
+        const hasRequiredRole = item.requiredRoles.some(role => hasRole(role as any));
+        
+        // Check if user has required permissions (if any specified)
+        const hasRequiredPermissions = item.requiredPermissions.length === 0 || 
+          item.requiredPermissions.some(permission => hasPermission(permission));
+        
+        return hasRequiredRole && hasRequiredPermissions;
+      });
 
   const isCurrentPath = (path: string) => location.pathname === path;
 
@@ -191,8 +274,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     {user?.name || 'Guest'}
                   </p>
                   <p className="text-xs font-medium text-secondary">
-                    {user?.role || 'Public'}
+                    {user?.organizationName || getRoleDisplayName(user?.role)}
                   </p>
+                  {user?.role && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {getRoleDisplayName(user.role)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <ThemeToggle />

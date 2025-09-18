@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { 
   Certificate, 
   CertificateTemplate, 
@@ -13,31 +13,170 @@ import {
   BulkIssueForm, 
   CertificateStatistics 
 } from '../types';
+import { handleApiError, ApiError } from '../utils/apiErrorHandler';
 
-// Create axios instance
+// Enhanced API response interface
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta?: Record<string, any>;
+  message?: string;
+}
+
+// Request configuration with retry logic
+interface ApiRequestConfig extends AxiosRequestConfig {
+  retries?: number;
+  retryDelay?: number;
+  metadata?: {
+    startTime?: number;
+    [key: string]: any;
+  };
+}
+
+// Create axios instance with professional configuration
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
 });
 
-// Add request interceptor for auth
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request interceptor with enhanced logging and auth
+api.interceptors.request.use(
+  (config) => {
+    // Add authentication token
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Add request ID for tracking
+    config.headers['x-request-id'] = generateRequestId();
+
+    // Add timestamp for performance monitoring
+    config.metadata = { startTime: Date.now() };
+
+    // Log request in development
+    if (import.meta.env.DEV) {
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
+        headers: config.headers,
+        params: config.params,
+        data: config.data,
+      });
+    }
+
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request interceptor error:', error);
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Response interceptor with error handling and retry logic
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Calculate request duration
+    const duration = Date.now() - (response.config.metadata?.startTime || 0);
+
+    // Log response in development
+    if (import.meta.env.DEV) {
+      console.log(`✅ API Response: ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url} (${duration}ms)`, {
+        status: response.status,
+        data: response.data,
+        duration: `${duration}ms`,
+      });
+    }
+
+    return response;
+  },
+  async (error: AxiosError) => {
+    const config = error.config as ApiRequestConfig;
+    
+    // Calculate request duration if available
+    const duration = config?.metadata?.startTime ? Date.now() - config.metadata.startTime : 0;
+
+    // Log error in development
+    if (import.meta.env.DEV) {
+      console.error(`❌ API Error: ${error.response?.status || 'Network'} ${config?.method?.toUpperCase()} ${config?.url} (${duration}ms)`, {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        duration: `${duration}ms`,
+      });
+    }
+
+    // Retry logic for retryable errors
+    if (shouldRetry(error) && config && (config.retries || 0) < 3) {
+      config.retries = (config.retries || 0) + 1;
+      const delay = config.retryDelay || Math.pow(2, config.retries) * 1000; // Exponential backoff
+
+      console.log(`🔄 Retrying request (attempt ${config.retries}/3) after ${delay}ms...`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api(config);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Helper functions
+function generateRequestId(): string {
+  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
+function shouldRetry(error: AxiosError): boolean {
+  if (!error.response) return true; // Network errors
+  
+  const retryableStatuses = [408, 429, 500, 502, 503, 504];
+  return retryableStatuses.includes(error.response.status);
+}
+
+// Enhanced API wrapper with error handling
+async function apiCall<T>(
+  requestFn: () => Promise<AxiosResponse<ApiResponse<T>>>
+): Promise<T> {
+  try {
+    const response = await requestFn();
+    
+    // Handle new API response format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const apiResponse = response.data as ApiResponse<T>;
+      
+      if (apiResponse.success && apiResponse.data !== undefined) {
+        // Handle nested data structure (e.g., { data: { items: [...] } })
+        if (typeof apiResponse.data === 'object' && 'items' in apiResponse.data) {
+          return (apiResponse.data as any).items;
+        }
+        return apiResponse.data;
+      } else if (!apiResponse.success && apiResponse.error) {
+        throw new Error(apiResponse.error.message || 'API request failed');
+      }
+    }
+    
+    // Fallback for legacy API responses
+    return response.data as T;
+  } catch (error) {
+    const apiError = handleApiError(error);
+    throw new Error(apiError.message);
+  }
+}
 
 // Certificate API
 export const certificateApi = {
   list: async (organizationId: string): Promise<Certificate[]> => {
-    const response = await api.get('/certificates', {
+    return await apiCall(() => api.get('/certificates', {
       params: { organizationId }
-    });
-    return response.data.items || response.data;
+    }));
   },
 
   search: async (filters: SearchFilters): Promise<{ items: Certificate[]; total: number; hasMore?: boolean }> => {
@@ -141,8 +280,9 @@ export const templateApi = {
 
 // Program API
 export const programApi = {
-  list: async (): Promise<Program[]> => {
-    const response = await api.get('/programs');
+  list: async (organizationId?: string): Promise<Program[]> => {
+    const params = organizationId ? { organizationId } : {};
+    const response = await api.get('/programs', { params });
     return response.data.items || response.data;
   },
 
@@ -181,9 +321,38 @@ export const verifyApi = {
     return response.data;
   },
 
-  verifyByNationalId: async (nationalId: string, organizationId: string = 'org-demo'): Promise<VerificationResult> => {
-    const response = await api.post('/verify/national-id', { nationalId, organizationId });
-    return response.data;
+  verifyByNationalId: async (nationalId: string, organizationId?: string): Promise<VerificationResult> => {
+    // Search for certificates with this national ID across all organizations
+    const searchParams: any = {
+      query: nationalId,
+      limit: 50 // Get all matching certificates
+    };
+    
+    // Only include organizationId if specifically provided (for filtered searches)
+    if (organizationId) {
+      searchParams.organizationId = organizationId;
+    }
+    
+    const searchResponse = await api.post('/certificates/search', searchParams);
+    
+    const certificates = searchResponse.data.certificates || searchResponse.data.items || [];
+    
+    if (certificates.length > 0) {
+      // Return all certificates, but mark as valid if any are issued
+      const hasIssuedCertificate = certificates.some(cert => cert.status === 'issued');
+      return {
+        valid: hasIssuedCertificate,
+        certificate: certificates[0], // Primary certificate for compatibility
+        certificates: certificates // All matching certificates
+      };
+    } else {
+      // No certificate found for this national ID
+      return {
+        valid: false,
+        certificate: null,
+        certificates: []
+      };
+    }
   },
 };
 
@@ -220,4 +389,5 @@ export const reportsApi = {
   },
 };
 
+export { api };
 export default api;

@@ -16,25 +16,39 @@ export default function Programs() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
+  const [newDegreeLevel, setNewDegreeLevel] = useState<'certificate' | 'diploma' | 'bachelor' | 'master' | 'doctorate'>('bachelor');
+  const [newFieldOfStudy, setNewFieldOfStudy] = useState('');
+  const [newDuration, setNewDuration] = useState('');
+  const [newCredits, setNewCredits] = useState('');
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   const { data: programs, isLoading, error } = useQuery({
-    queryKey: ['programs'],
-    queryFn: () => programApi.list(),
+    queryKey: ['programs', user?.organizationId],
+    queryFn: () => programApi.list(user?.organizationId),
   });
 
   const createMutation = useMutation({
     mutationFn: () => programApi.create({
       name: newName,
+      description: newDescription,
+      degreeLevel: newDegreeLevel,
+      fieldOfStudy: newFieldOfStudy,
+      duration: newDuration,
+      credits: newCredits ? parseInt(newCredits) : undefined,
       organizationId: user?.organizationId || 'org-demo',
+      isActive: true,
     } as any),
     onSuccess: () => {
-      toast.success('Program created');
-      queryClient.invalidateQueries({ queryKey: ['programs'] });
+      toast.success('Program created successfully');
+      queryClient.invalidateQueries({ queryKey: ['programs', user?.organizationId] });
       setShowCreate(false);
       setNewName('');
       setNewDescription('');
+      setNewDegreeLevel('bachelor');
+      setNewFieldOfStudy('');
+      setNewDuration('');
+      setNewCredits('');
     },
     onError: (e: any) => {
       toast.error(e?.response?.data?.message || 'Failed to create program');
@@ -70,10 +84,16 @@ export default function Programs() {
           </p>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4">
-          <button onClick={() => setShowCreate(true)} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Program
-          </button>
+          {hasPermission('programs:create') ? (
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create Program
+            </button>
+          ) : (
+            <div className="text-sm text-gray-500 italic">
+              Contact your administrator to create programs
+            </div>
+          )}
         </div>
       </div>
 
@@ -113,7 +133,44 @@ export default function Programs() {
                     <AcademicCapIcon className="h-5 w-5 text-emerald-600 mr-2" />
                     <h3 className="text-lg font-semibold text-gray-900">{program.name}</h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">Program</p>
+                  
+                  {/* Degree Level Badge */}
+                  <div className="flex items-center mb-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      program.degreeLevel === 'doctorate' ? 'bg-purple-100 text-purple-800' :
+                      program.degreeLevel === 'master' ? 'bg-blue-100 text-blue-800' :
+                      program.degreeLevel === 'bachelor' ? 'bg-green-100 text-green-800' :
+                      program.degreeLevel === 'diploma' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {program.degreeLevel === 'doctorate' ? 'Doctorate' :
+                       program.degreeLevel === 'master' ? 'Master\'s' :
+                       program.degreeLevel === 'bachelor' ? 'Bachelor\'s' :
+                       program.degreeLevel === 'diploma' ? 'Diploma' : 'Certificate'}
+                    </span>
+                  </div>
+
+                  {/* Field of Study */}
+                  {program.fieldOfStudy && (
+                    <p className="text-sm text-gray-600 mb-1">
+                      <span className="font-medium">Field:</span> {program.fieldOfStudy}
+                    </p>
+                  )}
+
+                  {/* Duration & Credits */}
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                    {program.duration && (
+                      <span>📅 {program.duration}</span>
+                    )}
+                    {program.credits && (
+                      <span>🎓 {program.credits} credits</span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {program.description && (
+                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">{program.description}</p>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2 ml-4">
                   <button className="text-gray-400 hover:text-gray-600" title="Edit">
@@ -133,17 +190,79 @@ export default function Programs() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/30" onClick={() => !createMutation.isPending && setShowCreate(false)}></div>
           <div className="relative bg-white w-full max-w-lg rounded-xl shadow-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Program</h3>
-            <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Program</h3>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Web Development" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program Name *</label>
+                <input 
+                  value={newName} 
+                  onChange={(e) => setNewName(e.target.value)} 
+                  placeholder="e.g., Advanced Software Engineering Program" 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" 
+                />
               </div>
-              {/* optional description UI kept but not persisted */}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Degree Level *</label>
+                <select 
+                  value={newDegreeLevel} 
+                  onChange={(e) => setNewDegreeLevel(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="certificate">Certificate</option>
+                  <option value="diploma">Diploma</option>
+                  <option value="bachelor">Bachelor's Degree</option>
+                  <option value="master">Master's Degree</option>
+                  <option value="doctorate">Doctorate/PhD</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Field of Study *</label>
+                <input 
+                  value={newFieldOfStudy} 
+                  onChange={(e) => setNewFieldOfStudy(e.target.value)} 
+                  placeholder="e.g., Computer Science, Engineering, Business" 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                  <input 
+                    value={newDuration} 
+                    onChange={(e) => setNewDuration(e.target.value)} 
+                    placeholder="e.g., 4 years, 2 semesters" 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
+                  <input 
+                    type="number"
+                    value={newCredits} 
+                    onChange={(e) => setNewCredits(e.target.value)} 
+                    placeholder="120" 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea 
+                  value={newDescription} 
+                  onChange={(e) => setNewDescription(e.target.value)} 
+                  placeholder="Brief description of the program..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" 
+                />
+              </div>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
               <button onClick={() => setShowCreate(false)} disabled={createMutation.isPending} className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50">Cancel</button>
-              <button onClick={() => createMutation.mutate()} disabled={!newName || createMutation.isPending} className="inline-flex items-center px-4 py-2 text-sm rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
+              <button onClick={() => createMutation.mutate()} disabled={!newName || !newFieldOfStudy || createMutation.isPending} className="inline-flex items-center px-4 py-2 text-sm rounded-md text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
                 {createMutation.isPending ? 'Creating...' : 'Create'}
               </button>
             </div>

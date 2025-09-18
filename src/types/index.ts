@@ -23,7 +23,7 @@ export interface Certificate {
   grade?: string;
   issueDate: string;
   expiryDate?: string;
-  status: 'active' | 'revoked' | 'expired';
+  status: 'issued' | 'revoked' | 'pending' | 'expired';
   additionalFields: Record<string, any>;
   metadata: Record<string, any>;
   createdAt: string;
@@ -89,6 +89,14 @@ export interface Program {
   id: string;
   organizationId: string;
   name: string;
+  description?: string;
+  degreeLevel: 'certificate' | 'diploma' | 'bachelor' | 'master' | 'doctorate';
+  fieldOfStudy: string;
+  duration?: string;
+  credits?: number;
+  isActive: boolean;
+  createdAtIso: string;
+  updatedAtIso?: string;
 }
 
 export interface Student {
@@ -118,6 +126,7 @@ export interface VerificationEvent {
 export interface VerificationResult {
   valid: boolean;
   certificate?: Certificate;
+  certificates?: Certificate[]; // Array of all matching certificates (for national ID verification)
   error?: string;
   verificationId?: string;
   verifiedAt?: string;

@@ -1,4 +1,11 @@
-export type UserRole = 'admin' | 'institution' | 'employer' | 'student' | 'public';
+export type UserRole = 
+  | 'ministry_admin'      // Ministry of Education - full system control
+  | 'institution_admin'   // Institution administrator - full institution control
+  | 'institution_staff'   // Institution staff - certificate issuance only
+  | 'auditor'            // Government auditor - read-only access
+  | 'employer'           // Employer - verification only
+  | 'student'            // Student - view own certificates
+  | 'public';            // Public - verification only
 
 export interface User {
   id: string;
@@ -6,7 +13,12 @@ export interface User {
   name: string;
   role: UserRole;
   organizationId?: string;
+  organizationName?: string;
+  institutionType?: 'university' | 'college' | 'institute' | 'ministry' | 'auditor' | 'employer';
   permissions: string[];
+  isActive: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
 }
 
 export interface LoginCredentials {

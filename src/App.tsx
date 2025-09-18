@@ -17,10 +17,12 @@ import Student from './pages/Student';
 import Certificates from './pages/Certificates';
 import IssueCertificate from './pages/IssueCertificate';
 import BulkOperations from './pages/BulkOperations';
-import Templates from './pages/Templates';
 import Programs from './pages/Programs';
+import InstitutionManagement from './pages/InstitutionManagement';
+import GovernmentDashboard from './pages/GovernmentDashboard';
 import Students from './pages/Students';
 import Reports from './pages/Reports';
+import Unauthorized from './pages/Unauthorized';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -68,6 +70,8 @@ function App() {
                   {/* Public routes */}
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/verify" element={<Verify />} />
+                  <Route path="/verify/:publicId" element={<Verify />} />
                   
                   {/* Protected routes with Layout */}
                   <Route path="/dashboard" element={
@@ -102,10 +106,11 @@ function App() {
                     </ProtectedRoute>
                   } />
                   
+                  {/* Redirect templates to programs for national system */}
                   <Route path="/templates" element={
                     <ProtectedRoute>
                       <Layout>
-                        <Templates />
+                        <Programs />
                       </Layout>
                     </ProtectedRoute>
                   } />
@@ -114,6 +119,22 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <Programs />
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/institutions" element={
+                    <ProtectedRoute requiredRole="ministry_admin">
+                      <Layout>
+                        <InstitutionManagement />
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/government" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <GovernmentDashboard />
                       </Layout>
                     </ProtectedRoute>
                   } />
@@ -157,6 +178,8 @@ function App() {
                       </Layout>
                     </ProtectedRoute>
                   } />
+                  
+                  <Route path="/unauthorized" element={<Unauthorized />} />
                 </Routes>
               </div>
             </Router>

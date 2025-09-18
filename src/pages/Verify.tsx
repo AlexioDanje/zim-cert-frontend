@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { 
   ShieldCheckIcon, 
@@ -22,6 +23,7 @@ import {
   BanknotesIcon
 } from '@heroicons/react/24/outline';
 import { verifyApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const verificationSchema = z.object({
   searchMethod: z.enum(['certificate', 'national']),
@@ -38,6 +40,9 @@ type VerificationForm = z.infer<typeof verificationSchema>;
 const MOCK_ACCOUNT_BALANCE = 25.50;
 
 export default function Verify() {
+  const { user } = useAuth();
+  const { publicId } = useParams<{ publicId: string }>();
+  const [searchParams] = useSearchParams();
   const [verificationParams, setVerificationParams] = useState<{
     searchMethod: 'certificate' | 'national';
     certificateId?: string;
@@ -46,6 +51,7 @@ export default function Verify() {
   } | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [isQrVerification, setIsQrVerification] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<VerificationForm>({
     resolver: zodResolver(verificationSchema),
@@ -61,6 +67,18 @@ export default function Verify() {
   const paymentAmount = watch('paymentAmount') || 0;
   const hasInsufficientBalance = paymentAmount > MOCK_ACCOUNT_BALANCE;
 
+  // Handle QR code verification automatically
+  useEffect(() => {
+    if (publicId) {
+      setIsQrVerification(true);
+      setVerificationParams({
+        searchMethod: 'certificate',
+        certificateId: publicId,
+      });
+      setShowResult(true);
+    }
+  }, [publicId]);
+
   // React Query for verification
   const { data: result, isLoading, error } = useQuery({
     queryKey: ['verify', verificationParams],
@@ -70,7 +88,7 @@ export default function Verify() {
       if (verificationParams.searchMethod === 'certificate' && verificationParams.certificateId) {
         return await verifyApi.verifyByPublicId(verificationParams.certificateId);
       } else if (verificationParams.searchMethod === 'national' && verificationParams.nationalId) {
-        return await verifyApi.verifyByNationalId(verificationParams.nationalId, verificationParams.organizationId || '');
+        return await verifyApi.verifyByNationalId(verificationParams.nationalId, verificationParams.organizationId);
       }
       return null;
     },
@@ -128,27 +146,33 @@ export default function Verify() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
-                Certificate Verification
+                <ShieldCheckIcon className="h-8 w-8 text-emerald-600 mr-3" />
+                {isQrVerification ? 'Certificate Verification' : 'Certificate Verification'}
               </h1>
               <p className="mt-2 text-lg text-gray-600">
-                Verify certificate authenticity with secure payment processing
+                {isQrVerification 
+                  ? 'Verifying certificate authenticity from QR code scan'
+                  : 'Verify certificate authenticity with secure payment processing'
+                }
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Account Balance</div>
-              <div className="text-2xl font-bold text-gray-900 flex items-center">
-                <CurrencyDollarIcon className="h-6 w-6 text-green-600 mr-1" />
-                {MOCK_ACCOUNT_BALANCE.toFixed(2)}
+            {!isQrVerification && (
+              <div className="text-right">
+                <div className="text-sm text-gray-500">Account Balance</div>
+                <div className="text-2xl font-bold text-gray-900 flex items-center">
+                  <CurrencyDollarIcon className="h-6 w-6 text-green-600 mr-1" />
+                  {MOCK_ACCOUNT_BALANCE.toFixed(2)}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-6">
-        {/* Verification Form */}
-        <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
+        {/* Verification Form - Hidden for QR verification */}
+        {!isQrVerification && (
+          <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center">
               <MagnifyingGlassIcon className="h-5 w-5 text-indigo-600 mr-2" />
@@ -416,9 +440,218 @@ export default function Verify() {
             </div>
           </form>
         </div>
+        )}
 
-        {/* Verification Results Modal */}
-        {showResult && (
+        {/* QR Code Verification Direct Result */}
+        {isQrVerification && (
+          <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <ShieldCheckIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                QR Code Verification Result
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Certificate ID: {publicId}</p>
+            </div>
+            
+            <div className="p-6">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mr-3"></div>
+                  <span className="text-gray-600 text-lg">Verifying certificate authenticity...</span>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start">
+                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <XCircleIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-red-800 font-semibold text-lg">Verification Failed</div>
+                    <div className="text-red-700 mt-1">{(error as any)?.message || 'An error occurred during verification. Please try again.'}</div>
+                  </div>
+                </div>
+              ) : result?.valid ? (
+                <div className="space-y-6">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex items-start">
+                    <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CheckCircleIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-emerald-800 font-semibold text-xl">✅ Certificate Verified Successfully</div>
+                      <div className="text-emerald-700 mt-1">
+                        {result?.certificates && result.certificates.length > 1 
+                          ? `Found ${result.certificates.length} certificates for this National ID.`
+                          : 'This certificate is authentic and valid.'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multiple Certificates Summary */}
+                  {result?.certificates && result.certificates.length > 1 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                      <div className="flex items-center mb-4">
+                        <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                        <h3 className="text-lg font-semibold text-blue-900">All Certificates for this National ID</h3>
+                      </div>
+                      <div className="grid gap-4">
+                        {result.certificates.map((cert, index) => (
+                          <div key={cert.id} className="bg-white rounded-lg p-4 border border-blue-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                    #{index + 1}
+                                  </span>
+                                  <span className="font-medium text-gray-900">
+                                    {cert.payload?.fields?.certificateType || 'Certificate'}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    {cert.payload?.fields?.graduationYear || new Date(cert.createdAtIso).getFullYear()}
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-sm text-gray-600">
+                                  <strong>{cert.payload?.fields?.studentName}</strong> - {cert.payload?.fields?.programName}
+                                  {cert.payload?.fields?.grade && (
+                                    <span className="ml-2 text-blue-600 font-medium">Grade: {cert.payload.fields.grade}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                  cert.status === 'issued' ? 'bg-green-100 text-green-800' : 
+                                  cert.status === 'revoked' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {cert.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Certificate Preview */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-8">
+                    <div className="flex items-center mb-6">
+                      <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Verified Certificate</h2>
+                    </div>
+                    
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-blue-300 dark:border-gray-500">
+                      <div className="text-center space-y-4">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                          {result?.certificate?.payload?.fields?.certificateType || 'Certificate'}
+                        </div>
+                        
+                        <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                          {result?.certificate?.payload?.fields?.badgeText || result?.certificate?.payload?.fields?.certificateType || 'Certificate'}
+                        </h3>
+                        
+                        <div className="max-w-md mx-auto">
+                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                            This is to certify that <strong>{result?.certificate?.payload?.fields?.studentName || '[Student Name]'}</strong> {result?.certificate?.payload?.fields?.completionText || 'has successfully completed'} <strong>{result?.certificate?.payload?.fields?.programName || '[Program Name]'}</strong>
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-sm">
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Type:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">{result?.certificate?.payload?.fields?.certificateType || 'Certificate'}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Institution:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {(result?.certificate as any)?.templateSnapshot?.branding?.issuerName || 'ZIM Institute of Technology'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Issue Date:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">
+                              {result?.certificate?.createdAtIso ? new Date(result.certificate.createdAtIso).toLocaleDateString() : '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+                        ✨ This certificate has been cryptographically verified and is authentic
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <DocumentTextIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                        Certificate Information
+                      </h5>
+                      <dl className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Certificate ID</dt>
+                          <dd className="text-sm font-mono text-gray-900">{result?.certificate?.id?.substring(0, 12)}...</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Institution</dt>
+                          <dd className="text-sm font-bold text-gray-900">ZIM Institute of Technology</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Issue Date</dt>
+                          <dd className="text-sm font-bold text-gray-900">{result?.certificate?.createdAtIso ? new Date(result.certificate.createdAtIso).toLocaleDateString() : '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <dt className="text-sm font-medium text-gray-500">Status</dt>
+                          <dd className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                            {result?.certificate?.status}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <UserIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                        Student Information
+                      </h5>
+                      <dl className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Student Name</dt>
+                          <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.studentName || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Program</dt>
+                          <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.programName || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Classification</dt>
+                          <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.classification || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <dt className="text-sm font-medium text-gray-500">Reference</dt>
+                          <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.studentReference || '-'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start">
+                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <XCircleIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-red-800 font-semibold text-lg">Certificate Not Found</div>
+                    <div className="text-red-700 mt-1">The certificate could not be verified. It may have been revoked or the ID is invalid.</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Verification Results Modal - Only for manual verification */}
+        {showResult && !isQrVerification && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setShowResult(false)}></div>
             <div className="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">

@@ -16,16 +16,18 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { certificateApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import type { Certificate, SearchFilters } from '../types';
 
 export default function Certificates() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'issued' | 'revoked' | 'pending'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
 
   const searchFilters: SearchFilters = {
-    organizationId: 'org-demo',
+    organizationId: user?.organizationId || 'org-demo',
     query: searchTerm,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page: currentPage,
@@ -33,7 +35,7 @@ export default function Certificates() {
   };
 
   const { data: searchResult, isLoading, error } = useQuery({
-    queryKey: ['certificates-search', searchFilters],
+    queryKey: ['certificates-search', user?.organizationId, searchFilters],
     queryFn: () => certificateApi.search(searchFilters),
   });
 
@@ -43,6 +45,35 @@ export default function Certificates() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
+  };
+
+  const downloadPdf = async (certificateId: string) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+      const response = await fetch(`${apiUrl}/certificates/${certificateId}/pdf`);
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${certificateId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF download error:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
+  const previewPdf = (certificateId: string) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+    const url = `${apiUrl}/certificates/${certificateId}/preview`;
+    window.open(url, '_blank');
   };
 
   const getStatusIcon = (status: string) => {
@@ -267,10 +298,18 @@ export default function Certificates() {
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Download"
+                            onClick={() => downloadPdf(certificate.id)}
+                            className="text-emerald-600 hover:text-emerald-900"
+                            title="Download PDF"
                           >
                             <ArrowDownTrayIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => previewPdf(certificate.id)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Preview PDF"
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
                           </button>
                           {certificate.status === 'active' && (
                             <button

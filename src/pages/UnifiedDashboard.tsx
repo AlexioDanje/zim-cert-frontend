@@ -45,13 +45,13 @@ export default function UnifiedDashboard() {
   const { data: statistics } = useQuery({
     queryKey: ['certificate-statistics', user?.organizationId],
     queryFn: () => certificateApi.statistics(user?.organizationId || 'org-demo'),
-    enabled: ['institution', 'admin', 'employer'].includes(user?.role || '')
+    enabled: ['institution_admin', 'institution_staff', 'ministry_admin', 'employer'].includes(user?.role || '')
   });
 
   const getRoleBasedContent = () => {
     switch (user?.role) {
-      case 'admin':
-      case 'institution':
+      case 'institution_admin':
+      case 'institution_staff':
         return {
           title: 'Institution Dashboard',
           description: 'Manage certificates, students, and programs',

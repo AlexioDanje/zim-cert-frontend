@@ -10,14 +10,29 @@ import {
   ClockIcon,
   BuildingOfficeIcon,
   ChartBarIcon,
-  ArrowTrendingUpIcon
+  ArrowTrendingUpIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { verifyApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+interface VerificationHistoryItem {
+  id: string;
+  searchType: 'publicId' | 'nationalId';
+  searchValue: string;
+  candidateName?: string;
+  certificateType?: string;
+  status: 'valid' | 'invalid' | 'error';
+  timestamp: string;
+  result?: any;
+}
 
 export default function Employer() {
+  const { user } = useAuth();
   const [searchType, setSearchType] = useState<'publicId' | 'nationalId'>('publicId');
   const [searchValue, setSearchValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [verificationHistory, setVerificationHistory] = useState<VerificationHistoryItem[]>([]);
 
   const { data: verificationResult, isLoading, error, refetch } = useQuery({
     queryKey: ['employer-verify', searchType, searchValue],
@@ -25,7 +40,7 @@ export default function Employer() {
       if (searchType === 'publicId') {
         return verifyApi.verifyByPublicId(searchValue);
       } else {
-        return verifyApi.verifyByNationalId(searchValue, 'org-demo');
+        return verifyApi.verifyByNationalId(searchValue); // Search across all organizations
       }
     },
     enabled: false,
@@ -37,7 +52,36 @@ export default function Employer() {
     
     setIsSearching(true);
     try {
-      await refetch();
+      const result = await refetch();
+      
+      // Add to verification history
+      if (result.data) {
+        const historyItem: VerificationHistoryItem = {
+          id: Date.now().toString(),
+          searchType,
+          searchValue,
+          candidateName: result.data.certificate?.payload?.fields?.studentName || 'Unknown',
+          certificateType: result.data.certificate?.payload?.fields?.certificateType || 'Certificate',
+          status: result.data.valid ? 'valid' : 'invalid',
+          timestamp: new Date().toISOString(),
+          result: result.data
+        };
+        
+        setVerificationHistory(prev => [historyItem, ...prev.slice(0, 9)]); // Keep last 10
+      }
+    } catch (err) {
+      // Add error to history
+      const historyItem: VerificationHistoryItem = {
+        id: Date.now().toString(),
+        searchType,
+        searchValue,
+        candidateName: 'Unknown',
+        certificateType: 'Unknown',
+        status: 'error',
+        timestamp: new Date().toISOString()
+      };
+      
+      setVerificationHistory(prev => [historyItem, ...prev.slice(0, 9)]);
     } finally {
       setIsSearching(false);
     }
@@ -253,27 +297,111 @@ export default function Employer() {
               )}
 
               {verificationResult && !isLoading && (
-                <div className="text-center">
-                  <div className="mx-auto h-16 w-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
-                    <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <h4 className="text-xl font-bold text-blue-600 mb-2">Verification System Active</h4>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    The certificate verification system is working correctly and is ready for use.
-                  </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-center">
-                      <CheckCircleIcon className="h-5 w-5 text-blue-600 mr-3" />
-                      <div className="text-left">
-                        <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">System Status:</p>
-                        <ul className="text-sm text-blue-600 dark:text-blue-400 mt-1 list-disc list-inside">
-                          <li>API integration working</li>
-                          <li>Verification endpoints active</li>
-                          <li>Ready for production use</li>
-                        </ul>
+                <div className="space-y-6">
+                  {verificationResult.valid ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 flex items-start">
+                      <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircleIcon className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-emerald-800 font-semibold text-xl">✅ Certificate Verified Successfully</div>
+                        <div className="text-emerald-700 mt-1">
+                          {verificationResult.certificates && verificationResult.certificates.length > 1 
+                            ? `Found ${verificationResult.certificates.length} certificates for this ${searchType === 'nationalId' ? 'National ID' : 'Certificate ID'}.`
+                            : 'This certificate is authentic and valid.'
+                          }
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-6 flex items-start">
+                      <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <XCircleIcon className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-red-800 font-semibold text-xl">❌ Verification Failed</div>
+                        <div className="text-red-700 mt-1">No valid certificate found for this {searchType === 'nationalId' ? 'National ID' : 'Certificate ID'}.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Multiple Certificates Summary for National ID */}
+                  {verificationResult.certificates && verificationResult.certificates.length > 1 && searchType === 'nationalId' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                      <div className="flex items-center mb-4">
+                        <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                        <h3 className="text-lg font-semibold text-blue-900">All Certificates for this National ID</h3>
+                      </div>
+                      <div className="grid gap-4">
+                        {verificationResult.certificates.map((cert, index) => (
+                          <div key={cert.id} className="bg-white rounded-lg p-4 border border-blue-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                    #{index + 1}
+                                  </span>
+                                  <span className="font-medium text-gray-900">
+                                    {cert.payload?.fields?.certificateType || 'Certificate'}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    {cert.payload?.fields?.graduationYear || new Date(cert.createdAtIso).getFullYear()}
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-sm text-gray-600">
+                                  <strong>{cert.payload?.fields?.studentName}</strong> - {cert.payload?.fields?.programName}
+                                  {cert.payload?.fields?.grade && (
+                                    <span className="ml-2 text-blue-600 font-medium">Grade: {cert.payload.fields.grade}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                  cert.status === 'issued' ? 'bg-green-100 text-green-800' : 
+                                  cert.status === 'revoked' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {cert.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Single Certificate Details */}
+                  {verificationResult.certificate && (
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <DocumentTextIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                        Certificate Details
+                      </h5>
+                      <dl className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Student Name</dt>
+                          <dd className="text-sm font-bold text-gray-900">{verificationResult.certificate.payload?.fields?.studentName || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Certificate Type</dt>
+                          <dd className="text-sm font-bold text-gray-900">{verificationResult.certificate.payload?.fields?.certificateType || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Program</dt>
+                          <dd className="text-sm font-bold text-gray-900">{verificationResult.certificate.payload?.fields?.programName || '-'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                          <dt className="text-sm font-medium text-gray-500">Grade</dt>
+                          <dd className="text-sm font-bold text-gray-900">{verificationResult.certificate.payload?.fields?.grade || 'N/A'}</dd>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <dt className="text-sm font-medium text-gray-500">Issue Date</dt>
+                          <dd className="text-sm font-bold text-gray-900">{verificationResult.certificate.createdAtIso ? new Date(verificationResult.certificate.createdAtIso).toLocaleDateString() : '-'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -312,40 +440,45 @@ export default function Employer() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      John Doe
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      Computer Science
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <CheckCircleIcon className="h-3 w-3 mr-1" />
-                        Valid
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      2 hours ago
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      Jane Smith
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      Data Science
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        <CheckCircleIcon className="h-3 w-3 mr-1" />
-                        Valid
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      4 hours ago
-                    </td>
-                  </tr>
+                  {verificationHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col items-center">
+                          <ClockIcon className="h-8 w-8 text-gray-300 mb-2" />
+                          <p>No verification history yet</p>
+                          <p className="text-xs mt-1">Perform certificate verifications to see history here</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    verificationHistory.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {item.candidateName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {item.certificateType}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            item.status === 'valid' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : item.status === 'invalid'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          }`}>
+                            {item.status === 'valid' && <CheckCircleIcon className="h-3 w-3 mr-1" />}
+                            {item.status === 'invalid' && <XCircleIcon className="h-3 w-3 mr-1" />}
+                            {item.status === 'error' && <ExclamationTriangleIcon className="h-3 w-3 mr-1" />}
+                            {item.status === 'valid' ? 'Valid' : item.status === 'invalid' ? 'Invalid' : 'Error'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(item.timestamp).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

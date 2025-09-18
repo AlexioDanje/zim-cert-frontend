@@ -24,7 +24,6 @@ const issueCertificateSchema = z.object({
   studentName: z.string().min(1, 'Student name is required'),
   nationalId: z.string().min(1, 'National ID is required'),
   programId: z.string().min(1, 'Program is required'),
-  templateId: z.string().min(1, 'Template is required'),
   graduationYear: z.string().min(4, 'Graduation year is required'),
   grade: z.string().optional(),
   additionalFields: z.record(z.string(), z.string()).optional(),
@@ -43,9 +42,65 @@ export default function IssueCertificate() {
   });
 
   const { data: programs } = useQuery({
-    queryKey: ['programs'],
-    queryFn: () => programApi.list(),
+    queryKey: ['programs', user?.organizationId],
+    queryFn: () => programApi.list(user?.organizationId),
   });
+  
+  // Watch form values for certificate preview
+  const [watchedProgramId, watchedStudentName] = watch(['programId', 'studentName']);
+  
+  // Generate certificate preview text based on program's degreeLevel
+  const getCertificatePreview = () => {
+    if (!watchedProgramId || !programs) return null;
+    
+    const selectedProgram = programs.find(p => p.id === watchedProgramId);
+    const programName = selectedProgram?.name || '';
+    const degreeLevel = selectedProgram?.degreeLevel;
+    const fieldOfStudy = selectedProgram?.fieldOfStudy || '';
+    const studentName = watchedStudentName || '[Student Name]';
+    
+    // Generate standardized text based on degree level (not program name parsing)
+    switch (degreeLevel) {
+      case 'doctorate':
+        return {
+          certificateType: 'Doctorate',
+          badgeText: fieldOfStudy ? `Doctor of Philosophy in ${fieldOfStudy}` : programName,
+          completionText: 'has successfully completed all requirements for the degree of',
+          fullText: `${studentName} has successfully completed all requirements for the degree of ${programName}`
+        };
+      case 'master':
+        return {
+          certificateType: 'Master\'s Degree',
+          badgeText: programName, // Use institution's exact program name
+          completionText: 'has successfully completed all requirements for the degree of',
+          fullText: `${studentName} has successfully completed all requirements for the degree of ${programName}`
+        };
+      case 'bachelor':
+        return {
+          certificateType: 'Bachelor\'s Degree',
+          badgeText: programName, // Use institution's exact program name
+          completionText: 'has successfully completed all requirements for the degree of',
+          fullText: `${studentName} has successfully completed all requirements for the degree of ${programName}`
+        };
+      case 'diploma':
+        return {
+          certificateType: 'Diploma',
+          badgeText: programName, // Use institution's exact program name
+          completionText: 'has successfully completed the diploma program in',
+          fullText: `${studentName} has successfully completed the diploma program in ${programName}`
+        };
+      case 'certificate':
+      default:
+        return {
+          certificateType: 'Certificate',
+          badgeText: programName || 'Certificate of Completion',
+          completionText: 'has successfully completed the program in',
+          fullText: `${studentName} has successfully completed the program in ${programName}`
+        };
+    }
+  };
+  
+  const certificatePreview = getCertificatePreview();
 
   const { data: templates } = useQuery({
     queryKey: ['templates'],
@@ -74,12 +129,57 @@ export default function IssueCertificate() {
       }, {} as Record<string, string>);
 
       // Backend expects: organizationId, studentId, programId, templateId, issueDateIso, fields, studentReference
-      const selectedProgramName = programs?.find(p => p.id === data.programId)?.name || '';
+      const selectedProgram = programs?.find(p => p.id === data.programId);
+      const selectedProgramName = selectedProgram?.name || '';
+      
+      // Generate standardized certificate text based on program's degreeLevel
+      const getCertificateText = (program: any) => {
+        const programName = program?.name || '';
+        const degreeLevel = program?.degreeLevel;
+        const fieldOfStudy = program?.fieldOfStudy || '';
+        
+        switch (degreeLevel) {
+          case 'doctorate':
+            return {
+              certificateType: 'Doctorate',
+              badgeText: fieldOfStudy ? `Doctor of Philosophy in ${fieldOfStudy}` : programName,
+              completionText: 'has successfully completed all requirements for the degree of'
+            };
+          case 'master':
+            return {
+              certificateType: 'Master\'s Degree',
+              badgeText: programName,
+              completionText: 'has successfully completed all requirements for the degree of'
+            };
+          case 'bachelor':
+            return {
+              certificateType: 'Bachelor\'s Degree',
+              badgeText: programName,
+              completionText: 'has successfully completed all requirements for the degree of'
+            };
+          case 'diploma':
+            return {
+              certificateType: 'Diploma',
+              badgeText: programName,
+              completionText: 'has successfully completed the diploma program in'
+            };
+          case 'certificate':
+          default:
+            return {
+              certificateType: 'Certificate',
+              badgeText: programName || 'Certificate of Completion',
+              completionText: 'has successfully completed the program in'
+            };
+        }
+      };
+
+      const certText = getCertificateText(selectedProgram);
+      
       const issueData = {
         organizationId: user?.organizationId || 'org-demo',
         studentId: data.nationalId,
         programId: data.programId,
-        templateId: data.templateId,
+        templateId: 'national-template', // Always use national template
         issueDateIso: new Date().toISOString(),
         studentReference: data.nationalId,
         fields: {
@@ -88,6 +188,10 @@ export default function IssueCertificate() {
           programName: selectedProgramName,
           graduationYear: data.graduationYear,
           grade: data.grade || '',
+          classification: data.grade || 'Pass',
+          certificateType: certText.certificateType,
+          badgeText: certText.badgeText,
+          completionText: certText.completionText,
           ...additionalFieldsObj,
         } as Record<string, string>,
       };
@@ -237,35 +341,75 @@ export default function IssueCertificate() {
             </div>
           </div>
 
-          {/* Certificate Template */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-            <div className="flex items-center mb-6">
-              <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Certificate Template</h2>
+          {/* Government Template Notice */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-green-200 dark:border-gray-600 p-8">
+            <div className="flex items-center mb-4">
+              <BuildingOfficeIcon className="w-6 h-6 text-green-600 mr-3" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Government Template</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="templateId" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Template *
-                </label>
-                <select
-                  {...register('templateId')}
-                  id="templateId"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select a template</option>
-                  {templates?.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.templateId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.templateId.message}</p>
-                )}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-green-200 dark:border-gray-600">
+              <div className="flex items-center space-x-3">
+                <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    National Certificate Template
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    All certificates use the government-approved standardized template for national compliance
+                  </p>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Certificate Preview */}
+          {certificatePreview && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-8">
+              <div className="flex items-center mb-6">
+                <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Certificate Preview</h2>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-blue-300 dark:border-gray-500">
+                <div className="text-center space-y-4">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    {certificatePreview.certificateType}
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                    {certificatePreview.badgeText}
+                  </h3>
+                  
+                  <div className="max-w-md mx-auto">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      This is to certify that <strong>{watchedStudentName || '[Student Name]'}</strong> {certificatePreview.completionText} <strong>{programs?.find(p => p.id === watchedProgramId)?.name || '[Program Name]'}</strong>
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Type:</span>
+                      <div className="font-medium text-gray-900 dark:text-white">{certificatePreview.certificateType}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Badge Text:</span>
+                      <div className="font-medium text-gray-900 dark:text-white">{certificatePreview.badgeText}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Completion Text:</span>
+                      <div className="font-medium text-gray-900 dark:text-white truncate" title={certificatePreview.completionText}>
+                        {certificatePreview.completionText}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+                ✨ This preview shows how the certificate text will appear based on the selected program type
+              </div>
+            </div>
+          )}
 
           {/* Additional Fields */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
