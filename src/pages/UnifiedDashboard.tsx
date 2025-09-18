@@ -156,7 +156,7 @@ export default function UnifiedDashboard() {
             },
             {
               name: 'Verified',
-              value: certificates?.filter(c => c.status === 'active').length || 0,
+              value: certificates?.filter(c => c.status === 'issued').length || 0,
               icon: CheckCircleIcon,
               color: 'stats-icon-blue',
               change: '100%',

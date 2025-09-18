@@ -311,7 +311,7 @@ export default function Certificates() {
                           >
                             <DocumentTextIcon className="h-4 w-4" />
                           </button>
-                          {certificate.status === 'active' && (
+                          {certificate.status === 'issued' && (
                             <button
                               className="text-red-400 hover:text-red-600"
                               title="Revoke"

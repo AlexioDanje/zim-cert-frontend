@@ -3,6 +3,7 @@
  * Provides consistent loading states, error handling, and caching
  */
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient, QueryKey } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { handleApiError } from '../utils/apiErrorHandler';
@@ -11,7 +12,7 @@ import { handleApiError } from '../utils/apiErrorHandler';
 export interface UseApiQueryOptions<T> {
   enabled?: boolean;
   staleTime?: number;
-  cacheTime?: number;
+  gcTime?: number; // Renamed from cacheTime in newer React Query versions
   retry?: number | boolean;
   refetchOnWindowFocus?: boolean;
   onSuccess?: (data: T) => void;
@@ -42,7 +43,7 @@ export function useApiQuery<T>(
   const {
     enabled = true,
     staleTime = 5 * 60 * 1000, // 5 minutes
-    cacheTime = 10 * 60 * 1000, // 10 minutes
+    gcTime = 10 * 60 * 1000, // 10 minutes
     retry = 2,
     refetchOnWindowFocus = false,
     onSuccess,
@@ -84,7 +85,7 @@ export function useApiQuery<T>(
     },
     enabled,
     staleTime,
-    cacheTime,
+    gcTime,
     retry: (failureCount, error) => {
       // Don't retry on client errors (4xx)
       const apiError = handleApiError(error);
