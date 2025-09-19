@@ -27,7 +27,7 @@ export default function Certificates() {
   const [pageSize] = useState(10);
 
   const searchFilters: SearchFilters = {
-    organizationId: user?.organizationId || 'org-demo',
+    organizationId: user?.organizationId,
     query: searchTerm,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page: currentPage,

@@ -38,7 +38,7 @@ const INSTITUTION_INFO = {
     name: 'Educational Institutions',
     description: 'Universities, colleges, and institutes',
     icon: AcademicCapIcon,
-    color: 'from-blue-500 to-blue-600',
+    color: 'from-emerald-500 to-emerald-600',
     domains: ['@university.edu', '@college.edu', '@institute.edu'],
     sampleEmail: 'admin@university.edu'
   },
@@ -109,13 +109,13 @@ export default function LoginSimple() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         
         {/* Left Side - Branding */}
         <div className="text-center lg:text-left">
           <div className="flex items-center justify-center lg:justify-start mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-2xl flex items-center justify-center mr-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center mr-4">
               <AcademicCapIcon className="w-10 h-10 text-white" />
             </div>
             <div>
@@ -131,11 +131,11 @@ export default function LoginSimple() {
               <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mr-4">
                 <ShieldCheckIcon className="w-5 h-5 text-green-600" />
               </div>
-              <span className="text-lg">Government-approved security</span>
+              <span className="text-lg">Blockchain-verified immutability</span>
             </div>
             <div className="flex items-center text-gray-600 dark:text-gray-300">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mr-4">
-                <AcademicCapIcon className="w-5 h-5 text-blue-600" />
+              <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mr-4">
+                <AcademicCapIcon className="w-5 h-5 text-emerald-600" />
               </div>
               <span className="text-lg">All institutions unified</span>
             </div>
@@ -173,7 +173,7 @@ export default function LoginSimple() {
                     }}
                     className={`p-3 rounded-lg border-2 transition-all duration-200 ${
                       selectedInstitution === institutionKey
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
                         : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                     }`}
                   >
@@ -205,7 +205,7 @@ export default function LoginSimple() {
                 <input
                   {...register('email')}
                   type="email"
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
                   placeholder={INSTITUTION_INFO[selectedInstitution].sampleEmail}
                 />
               </div>
@@ -223,7 +223,7 @@ export default function LoginSimple() {
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
                   placeholder="Enter your password"
                 />
                 <button
@@ -244,7 +244,7 @@ export default function LoginSimple() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-emerald-600 hover:from-blue-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>

@@ -176,7 +176,7 @@ export default function IssueCertificate() {
       const certText = getCertificateText(selectedProgram);
       
       const issueData = {
-        organizationId: user?.organizationId || 'org-demo',
+        organizationId: user?.organizationId,
         studentId: data.nationalId,
         programId: data.programId,
         templateId: 'national-template', // Always use national template
@@ -217,7 +217,7 @@ export default function IssueCertificate() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-green-100 dark:from-gray-900 dark:via-emerald-900 dark:to-green-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -229,7 +229,7 @@ export default function IssueCertificate() {
             Back
           </button>
           <div className="flex items-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mr-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-emerald-600 to-green-600 rounded-2xl flex items-center justify-center mr-4">
               <DocumentTextIcon className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -245,7 +245,7 @@ export default function IssueCertificate() {
           {/* Student Information */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
             <div className="flex items-center mb-6">
-              <UserIcon className="w-6 h-6 text-blue-600 mr-3" />
+              <UserIcon className="w-6 h-6 text-emerald-600 mr-3" />
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Student Information</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -257,7 +257,7 @@ export default function IssueCertificate() {
                   {...register('studentName')}
                   type="text"
                   id="studentName"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                   placeholder="Enter student's full name"
                 />
                 {errors.studentName && (
@@ -272,7 +272,7 @@ export default function IssueCertificate() {
                   {...register('nationalId')}
                   type="text"
                   id="nationalId"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                   placeholder="Enter national identification number"
                 />
                 {errors.nationalId && (
@@ -285,7 +285,7 @@ export default function IssueCertificate() {
           {/* Academic Information */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
             <div className="flex items-center mb-6">
-              <AcademicCapIcon className="w-6 h-6 text-blue-600 mr-3" />
+              <AcademicCapIcon className="w-6 h-6 text-emerald-600 mr-3" />
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Academic Information</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -296,7 +296,7 @@ export default function IssueCertificate() {
                 <select
                   {...register('programId')}
                   id="programId"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
                 >
                   <option value="">Select a program</option>
                   {programs?.map((program) => (
@@ -319,7 +319,7 @@ export default function IssueCertificate() {
                   id="graduationYear"
                   min="2000"
                   max="2030"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                   placeholder="2024"
                 />
                 {errors.graduationYear && (
@@ -335,7 +335,7 @@ export default function IssueCertificate() {
                 {...register('grade')}
                 type="text"
                 id="grade"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                 placeholder="A+, 95%, Distinction, etc."
               />
             </div>
@@ -364,19 +364,19 @@ export default function IssueCertificate() {
 
           {/* Certificate Preview */}
           {certificatePreview && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-8">
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-emerald-200 dark:border-gray-600 p-8">
               <div className="flex items-center mb-6">
-                <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                <DocumentTextIcon className="w-6 h-6 text-emerald-600 mr-3" />
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Certificate Preview</h2>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-blue-300 dark:border-gray-500">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-emerald-300 dark:border-gray-500">
                 <div className="text-center space-y-4">
                   <div className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     {certificatePreview.certificateType}
                   </div>
                   
-                  <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                  <h3 className="text-2xl font-bold text-emerald-900 dark:text-emerald-300">
                     {certificatePreview.badgeText}
                   </h3>
                   
@@ -415,13 +415,13 @@ export default function IssueCertificate() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
-                <SparklesIcon className="w-6 h-6 text-blue-600 mr-3" />
+                <SparklesIcon className="w-6 h-6 text-emerald-600 mr-3" />
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Additional Fields</h2>
               </div>
               <button
                 type="button"
                 onClick={addAdditionalField}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Add Field
@@ -435,14 +435,14 @@ export default function IssueCertificate() {
                     placeholder="Field name"
                     value={field.key}
                     onChange={(e) => updateAdditionalField(index, 'key', e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                   />
                   <input
                     type="text"
                     placeholder="Field value"
                     value={field.value}
                     onChange={(e) => updateAdditionalField(index, 'value', e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white placeholder-gray-400"
                   />
                   <button
                     type="button"
@@ -468,14 +468,14 @@ export default function IssueCertificate() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-8 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+              className="px-8 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
+              className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl font-semibold hover:from-emerald-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl flex items-center"
             >
               {isSubmitting ? (
                 <>

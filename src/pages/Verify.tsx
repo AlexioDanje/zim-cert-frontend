@@ -20,7 +20,9 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   CurrencyDollarIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { verifyApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,7 +31,6 @@ const verificationSchema = z.object({
   searchMethod: z.enum(['certificate', 'national']),
   certificateId: z.string().optional(),
   nationalId: z.string().optional(),
-  organizationId: z.string().optional(),
   paymentAmount: z.number().min(0.01, 'Payment amount must be at least $0.01'),
   paymentMethod: z.enum(['credit_card', 'bank_transfer', 'crypto']),
 });
@@ -47,17 +48,16 @@ export default function Verify() {
     searchMethod: 'certificate' | 'national';
     certificateId?: string;
     nationalId?: string;
-    organizationId?: string;
   } | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [isQrVerification, setIsQrVerification] = useState(false);
+  const [currentCertificatePage, setCurrentCertificatePage] = useState(1);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<VerificationForm>({
     resolver: zodResolver(verificationSchema),
     defaultValues: {
       searchMethod: 'certificate',
-      organizationId: undefined,
       paymentAmount: 5.00,
       paymentMethod: 'credit_card',
     },
@@ -83,19 +83,50 @@ export default function Verify() {
   const { data: result, isLoading, error } = useQuery({
     queryKey: ['verify', verificationParams],
     queryFn: async () => {
-      if (!verificationParams) return null;
+      if (!verificationParams) {
+        console.log('🔍 No verification params, returning null');
+        return null;
+      }
+      
+      console.log('🔍 Verification params:', verificationParams);
       
       if (verificationParams.searchMethod === 'certificate' && verificationParams.certificateId) {
-        return await verifyApi.verifyByPublicId(verificationParams.certificateId);
+        console.log('🔍 Verifying by certificate ID:', verificationParams.certificateId);
+        const result = await verifyApi.verifyByPublicId(verificationParams.certificateId);
+        console.log('🔍 Certificate verification result:', result);
+        return result;
       } else if (verificationParams.searchMethod === 'national' && verificationParams.nationalId) {
-        return await verifyApi.verifyByNationalId(verificationParams.nationalId, verificationParams.organizationId);
+        console.log('🔍 Verifying by national ID:', verificationParams.nationalId);
+        const result = await verifyApi.verifyByNationalId(verificationParams.nationalId);
+        console.log('🔍 National ID verification result:', result);
+        return result;
       }
+      console.log('🔍 No matching verification method, returning null');
       return null;
     },
     enabled: !!verificationParams,
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Pagination logic for certificates
+  const certificatesPerPage = 1;
+  const allCertificates = result?.certificates || (result?.certificate ? [result.certificate] : []);
+  const totalPages = Math.max(1, allCertificates.length);
+  const currentCertificate = allCertificates[currentCertificatePage - 1];
+  
+  // Reset to first page when new verification results come in
+  useEffect(() => {
+    if (result?.valid && allCertificates.length > 0) {
+      setCurrentCertificatePage(1);
+    }
+  }, [result?.valid, allCertificates.length]);
+
+  // Debug logging (can be removed in production)
+  // console.log('🔍 Verification result:', result);
+  // console.log('🔍 All certificates:', allCertificates);
+  // console.log('🔍 Current page:', currentCertificatePage);
+  // console.log('🔍 Total pages:', totalPages);
 
   const onSubmit = async (data: VerificationForm) => {
     if (hasInsufficientBalance) {
@@ -117,7 +148,6 @@ export default function Verify() {
         searchMethod: data.searchMethod,
         certificateId: data.certificateId,
         nationalId: data.nationalId,
-        organizationId: data.organizationId,
       });
       
       setShowResult(true);
@@ -134,7 +164,6 @@ export default function Verify() {
     setVerificationParams(null);
     setValue('certificateId', '');
     setValue('nationalId', '');
-    setValue('organizationId', undefined as any);
     setShowResult(false);
   };
 
@@ -173,9 +202,9 @@ export default function Verify() {
         {/* Verification Form - Hidden for QR verification */}
         {!isQrVerification && (
           <div className="bg-white shadow-lg rounded-xl border border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200">
+          <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-              <MagnifyingGlassIcon className="h-5 w-5 text-indigo-600 mr-2" />
+              <MagnifyingGlassIcon className="h-5 w-5 text-emerald-600 mr-2" />
               Verification Request
             </h2>
           </div>
@@ -189,7 +218,7 @@ export default function Verify() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className={`relative flex cursor-pointer rounded-xl p-6 border-2 transition-all duration-200 ${
                   searchMethod === 'certificate' 
-                    ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                    ? 'border-emerald-500 bg-emerald-50 shadow-md' 
                     : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}>
                   <input
@@ -201,30 +230,30 @@ export default function Verify() {
                   <div className="flex w-full items-center justify-between">
                     <div className="flex items-center">
                       <DocumentTextIcon className={`h-6 w-6 mr-3 ${
-                        searchMethod === 'certificate' ? 'text-indigo-600' : 'text-gray-400'
+                        searchMethod === 'certificate' ? 'text-emerald-600' : 'text-gray-400'
                       }`} />
                       <div>
                         <div className={`font-semibold ${
-                          searchMethod === 'certificate' ? 'text-indigo-900' : 'text-gray-900'
+                          searchMethod === 'certificate' ? 'text-emerald-900' : 'text-gray-900'
                         }`}>
                           Certificate ID
                         </div>
                         <div className={`text-sm ${
-                          searchMethod === 'certificate' ? 'text-indigo-600' : 'text-gray-500'
+                          searchMethod === 'certificate' ? 'text-emerald-600' : 'text-gray-500'
                         }`}>
                           Verify using certificate ID
                         </div>
                       </div>
                     </div>
                     {searchMethod === 'certificate' && (
-                      <CheckCircleIcon className="h-5 w-5 text-indigo-600" />
+                      <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
                     )}
                   </div>
                 </label>
 
                 <label className={`relative flex cursor-pointer rounded-xl p-6 border-2 transition-all duration-200 ${
                   searchMethod === 'national' 
-                    ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                    ? 'border-emerald-500 bg-emerald-50 shadow-md' 
                     : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}>
                   <input
@@ -236,23 +265,23 @@ export default function Verify() {
                   <div className="flex w-full items-center justify-between">
                     <div className="flex items-center">
                       <UserIcon className={`h-6 w-6 mr-3 ${
-                        searchMethod === 'national' ? 'text-indigo-600' : 'text-gray-400'
+                        searchMethod === 'national' ? 'text-emerald-600' : 'text-gray-400'
                       }`} />
                       <div>
                         <div className={`font-semibold ${
-                          searchMethod === 'national' ? 'text-indigo-900' : 'text-gray-900'
+                          searchMethod === 'national' ? 'text-emerald-900' : 'text-gray-900'
                         }`}>
                           National ID
                         </div>
                         <div className={`text-sm ${
-                          searchMethod === 'national' ? 'text-indigo-600' : 'text-gray-500'
+                          searchMethod === 'national' ? 'text-emerald-600' : 'text-gray-500'
                         }`}>
                           Verify using national ID
                         </div>
                       </div>
                     </div>
                     {searchMethod === 'national' && (
-                      <CheckCircleIcon className="h-5 w-5 text-indigo-600" />
+                      <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
                     )}
                   </div>
                 </label>
@@ -269,10 +298,10 @@ export default function Verify() {
                   <input
                     type="text"
                     {...register('certificateId', { required: 'Certificate ID is required' })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg placeholder-gray-400"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm placeholder-gray-400"
                     placeholder="Enter certificate ID (e.g., CERT-2024-001)"
                   />
-                  <DocumentTextIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                  <DocumentTextIcon className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
                 {errors.certificateId && (
                   <p className="mt-2 text-sm text-red-600 flex items-center">
@@ -282,7 +311,7 @@ export default function Verify() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div >
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     National ID
@@ -291,10 +320,10 @@ export default function Verify() {
                     <input
                       type="text"
                       {...register('nationalId', { required: 'National ID is required' })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg placeholder-gray-400"
-                      placeholder="Enter national ID"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm placeholder-gray-400"
+                      placeholder="Enter national ID (e.g., 48-12334...)"
                     />
-                    <UserIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                    <UserIcon className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
                   </div>
                   {errors.nationalId && (
                     <p className="mt-2 text-sm text-red-600 flex items-center">
@@ -302,24 +331,6 @@ export default function Verify() {
                       {errors.nationalId.message}
                     </p>
                   )}
-                </div>
-                {/* Organization selection is optional; leave blank for cross-org search */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Organization (optional)
-                  </label>
-                  <div className="relative">
-                    <select
-                      {...register('organizationId')}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg appearance-none bg-white"
-                    >
-                      <option value="">All organizations</option>
-                      <option value="org-demo">Demo University</option>
-                      <option value="org-tech">Tech Institute</option>
-                      <option value="org-medical">Medical College</option>
-                    </select>
-                    <BuildingOfficeIcon className="absolute right-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
-                  </div>
                 </div>
               </div>
             )}
@@ -416,8 +427,8 @@ export default function Verify() {
                   hasInsufficientBalance
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : isProcessingPayment
-                    ? 'bg-indigo-400 text-white cursor-not-allowed'
-                    : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    ? 'bg-emerald-400 text-white cursor-not-allowed'
+                    : 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                 }`}
               >
                 {isProcessingPayment ? (
@@ -488,18 +499,18 @@ export default function Verify() {
 
                   {/* Multiple Certificates Summary */}
                   {result?.certificates && result.certificates.length > 1 && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
                       <div className="flex items-center mb-4">
-                        <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
-                        <h3 className="text-lg font-semibold text-blue-900">All Certificates for this National ID</h3>
+                        <DocumentTextIcon className="w-6 h-6 text-emerald-600 mr-3" />
+                        <h3 className="text-lg font-semibold text-emerald-900">All Certificates for this National ID</h3>
                       </div>
                       <div className="grid gap-4">
                         {result.certificates.map((cert, index) => (
-                          <div key={cert.id} className="bg-white rounded-lg p-4 border border-blue-200">
+                          <div key={cert.id} className="bg-white rounded-lg p-4 border border-emerald-200">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center space-x-3">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                                     #{index + 1}
                                   </span>
                                   <span className="font-medium text-gray-900">
@@ -687,73 +698,136 @@ export default function Verify() {
                       <div className="text-red-700 text-sm">{(error as any)?.message || 'An error occurred during verification. Please try again.'}</div>
                     </div>
                   </div>
-                ) : result?.valid ? (
+                ) : result?.valid === true ? (
                   <div className="space-y-6">
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center">
                       <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
                         <CheckCircleIcon className="h-6 w-6 text-white" />
                       </div>
                       <div className="ml-3">
-                        <div className="text-emerald-800 font-semibold">Certificate Verified Successfully</div>
-                        <div className="text-emerald-700 text-sm">This certificate is authentic and valid.</div>
+                        <div className="text-emerald-800 font-semibold">
+                          {result?.certificates?.length > 1 
+                            ? `Found ${result.certificates.length} Certificates` 
+                            : 'Certificate Verified Successfully'
+                          }
+                        </div>
+                        <div className="text-emerald-700 text-sm">
+                          {result?.certificates?.length > 1 
+                            ? 'Multiple certificates found for this national ID'
+                            : 'This certificate is authentic and valid.'
+                          }
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                        <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                          <DocumentTextIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                          Certificate Information
-                        </h5>
-                        <dl className="space-y-3">
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Certificate ID</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.id}</dd>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Public ID</dt>
-                            <dd className="text-sm font-mono text-gray-900">{result?.certificate?.publicUrlId}</dd>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Issuing Institution</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.organizationId}</dd>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <dt className="text-sm font-medium text-gray-500">Issue Date</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.createdAtIso ? new Date(result.certificate.createdAtIso).toLocaleDateString() : '-'}</dd>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <dt className="text-sm font-medium text-gray-500">Status</dt>
-                            <dd className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">{result?.certificate?.status}</dd>
-                          </div>
-                        </dl>
-                      </div>
+                    {/* Display current certificate with pagination */}
+                    {currentCertificate && (
+                      <div className="space-y-6">
+                        {/* Certificate Card */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <DocumentTextIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                                Certificate Information
+                              </h5>
+                              <dl className="space-y-3">
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Certificate ID</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.id}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Public ID</dt>
+                                  <dd className="text-sm font-mono text-gray-900">{currentCertificate.publicUrlId}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Issuing Institution</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.organizationId}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                  <dt className="text-sm font-medium text-gray-500">Issue Date</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.createdAtIso ? new Date(currentCertificate.createdAtIso).toLocaleDateString() : '-'}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                  <dt className="text-sm font-medium text-gray-500">Status</dt>
+                                  <dd className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">{currentCertificate.status}</dd>
+                                </div>
+                              </dl>
+                            </div>
 
-                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                        <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                          <UserIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                          Student Information
-                        </h5>
-                        <dl className="space-y-3">
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Student Name</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.studentName || '-'}</dd>
+                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <UserIcon className="h-5 w-5 text-emerald-600 mr-2" />
+                                Student Information
+                              </h5>
+                              <dl className="space-y-3">
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Student Name</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.studentName || '-'}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Program</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.programName || '-'}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                                  <dt className="text-sm font-medium text-gray-500">Graduation Year</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.graduationYear || '-'}</dd>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                  <dt className="text-sm font-medium text-gray-500">Grade</dt>
+                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.grade || '-'}</dd>
+                                </div>
+                              </dl>
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Program</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.programName || '-'}</dd>
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setCurrentCertificatePage(Math.max(1, currentCertificatePage - 1))}
+                                disabled={currentCertificatePage === 1}
+                                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <ChevronLeftIcon className="h-4 w-4 mr-1" />
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => setCurrentCertificatePage(Math.min(totalPages, currentCertificatePage + 1))}
+                                disabled={currentCertificatePage === totalPages}
+                                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                                <ChevronRightIcon className="h-4 w-4 ml-1" />
+                              </button>
+                            </div>
+                            
+                            <div className="flex items-center space-x-4">
+                              <span className="text-sm text-gray-700">
+                                Certificate {currentCertificatePage} of {totalPages}
+                              </span>
+                              <div className="flex space-x-1">
+                                {Array.from({ length: totalPages }, (_, i) => (
+                                  <button
+                                    key={i + 1}
+                                    onClick={() => setCurrentCertificatePage(i + 1)}
+                                    className={`w-8 h-8 rounded-full text-sm font-medium ${
+                                      currentCertificatePage === i + 1
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {i + 1}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <dt className="text-sm font-medium text-gray-500">Graduation Year</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.graduationYear || '-'}</dd>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <dt className="text-sm font-medium text-gray-500">Grade</dt>
-                            <dd className="text-sm font-bold text-gray-900">{result?.certificate?.payload?.fields?.grade || '-'}</dd>
-                          </div>
-                        </dl>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center">

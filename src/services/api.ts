@@ -182,10 +182,14 @@ export const certificateApi = {
   search: async (filters: SearchFilters): Promise<{ items: Certificate[]; total: number; hasMore?: boolean }> => {
     const response = await api.post('/certificates/search', filters);
     const data = response.data || {};
+    
+    // Handle new API response format with nested data
+    const actualData = data.data || data;
+    
     return {
-      items: data.certificates || data.items || [],
-      total: typeof data.total === 'number' ? data.total : (data.items?.length || data.certificates?.length || 0),
-      hasMore: data.hasMore,
+      items: actualData.certificates || actualData.items || [],
+      total: typeof actualData.total === 'number' ? actualData.total : (actualData.items?.length || actualData.certificates?.length || 0),
+      hasMore: actualData.hasMore,
     };
   },
 
@@ -335,7 +339,9 @@ export const verifyApi = {
     
     const searchResponse = await api.post('/certificates/search', searchParams);
     
-    const certificates = searchResponse.data.certificates || searchResponse.data.items || [];
+    // Handle nested response structure - the response has { success: true, data: { certificates: [...] } }
+    const responseData = searchResponse.data.data || searchResponse.data;
+    const certificates = responseData.certificates || responseData.items || [];
     
     if (certificates.length > 0) {
       // Return all certificates, but mark as valid if any are issued
