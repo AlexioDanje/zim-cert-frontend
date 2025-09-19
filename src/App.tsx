@@ -21,6 +21,7 @@ import Programs from './pages/Programs';
 import InstitutionManagement from './pages/InstitutionManagement';
 import GovernmentDashboard from './pages/GovernmentDashboard';
 import Students from './pages/Students';
+import VerificationHistory from './pages/VerificationHistory';
 import Reports from './pages/Reports';
 import Unauthorized from './pages/Unauthorized';
 
@@ -91,7 +92,7 @@ function App() {
                   } />
                   
                   <Route path="/issue" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredPermission="certificates:create">
                       <Layout>
                         <IssueCertificate />
                       </Layout>
@@ -99,7 +100,7 @@ function App() {
                   } />
                   
                   <Route path="/bulk" element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requiredPermission="bulk:create">
                       <Layout>
                         <BulkOperations />
                       </Layout>
@@ -159,6 +160,14 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <Verify />
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/verification-history" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <VerificationHistory />
                       </Layout>
                     </ProtectedRoute>
                   } />

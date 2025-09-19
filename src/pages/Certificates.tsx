@@ -20,7 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { Certificate, SearchFilters } from '../types';
 
 export default function Certificates() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'issued' | 'revoked' | 'pending'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,20 +126,24 @@ export default function Certificates() {
           </p>
         </div>
         <div className="mt-4 flex space-x-3 md:mt-0 md:ml-4">
-          <Link
-            to="/bulk"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-          >
-            <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
-            Bulk Import
-          </Link>
-          <Link
-            to="/issue"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Issue Certificate
-          </Link>
+          {hasPermission('bulk:create') && (
+            <Link
+              to="/bulk"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Link>
+          )}
+          {hasPermission('certificates:create') && (
+            <Link
+              to="/issue"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Issue Certificate
+            </Link>
+          )}
         </div>
       </div>
 
@@ -199,7 +203,7 @@ export default function Certificates() {
             <p className="mt-1 text-sm text-gray-500">
               {searchTerm ? 'Try adjusting your search criteria.' : 'Get started by issuing your first certificate.'}
             </p>
-            {!searchTerm && (
+            {!searchTerm && hasPermission('certificates:create') && (
               <div className="mt-6">
                 <Link
                   to="/issue"

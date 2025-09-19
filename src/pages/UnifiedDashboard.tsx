@@ -15,7 +15,7 @@ import {
 import { certificateApi, studentApi, programApi, templateApi } from '../services/api';
 
 export default function UnifiedDashboard() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   // Fetch data based on user role
   const { data: certificates } = useQuery({
@@ -90,10 +90,11 @@ export default function UnifiedDashboard() {
             }
           ],
           quickActions: [
-            { name: 'Issue Certificate', href: '/issue', icon: PlusIcon, color: 'gradient-primary' },
-            { name: 'Bulk Operations', href: '/bulk', icon: ChartBarIcon, color: 'gradient-info' },
-            { name: 'Manage Students', href: '/students', icon: UserGroupIcon, color: 'gradient-success' },
-            { name: 'View Reports', href: '/reports', icon: ChartBarIcon, color: 'gradient-warning' }
+            ...(hasPermission('certificates:create') ? [{ name: 'Issue Certificate', href: '/issue', icon: PlusIcon, color: 'gradient-primary' }] : []),
+            ...(hasPermission('bulk:create') ? [{ name: 'Bulk Operations', href: '/bulk', icon: ChartBarIcon, color: 'gradient-info' }] : []),
+            ...(hasPermission('students:create') ? [{ name: 'Manage Students', href: '/students', icon: UserGroupIcon, color: 'gradient-success' }] : []),
+            ...(hasPermission('reports:read') ? [{ name: 'View Reports', href: '/reports', icon: ChartBarIcon, color: 'gradient-warning' }] : []),
+            ...(hasPermission('verification:read') ? [{ name: 'Verification History', href: '/verification-history', icon: ClockIcon, color: 'gradient-purple' }] : [])
           ]
         };
 
@@ -137,7 +138,7 @@ export default function UnifiedDashboard() {
           ],
           quickActions: [
             { name: 'Verify Certificate', href: '/verification', icon: ShieldCheckIcon, color: 'gradient-primary' },
-            { name: 'Verification History', href: '/verification', icon: ChartBarIcon, color: 'gradient-info' }
+            { name: 'Verification History', href: '/verification-history', icon: ChartBarIcon, color: 'gradient-info' }
           ]
         };
 
@@ -173,7 +174,8 @@ export default function UnifiedDashboard() {
           ],
           quickActions: [
             { name: 'View My Certificates', href: '/certificates', icon: DocumentTextIcon, color: 'gradient-primary' },
-            { name: 'Verify Certificate', href: '/verification', icon: ShieldCheckIcon, color: 'gradient-success' }
+            { name: 'Verify Certificate', href: '/verification', icon: ShieldCheckIcon, color: 'gradient-success' },
+            { name: 'Verification History', href: '/verification-history', icon: ChartBarIcon, color: 'gradient-info' }
           ]
         };
 

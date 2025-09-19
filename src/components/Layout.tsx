@@ -135,9 +135,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     },
     { 
       name: 'Verification History', 
-      href: '/verification', 
+      href: '/verification-history', 
       icon: ChartBarIcon, 
-      requiredRoles: ['employer'],
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor', 'employer', 'student'],
       requiredPermissions: ['verification:read']
     }
   ];

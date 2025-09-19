@@ -128,12 +128,14 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'reports:read',
     'bulk:create',
     'institution:manage',
+    'verification:read',
   ],
   institution_staff: [
     'certificates:create',
     'certificates:read',
     'students:read',
     'programs:read',
+    'verification:read',
   ],
   auditor: [
     'certificates:read',
@@ -141,6 +143,7 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'programs:read',
     'reports:read',
     'audit:read',
+    'verification:read',
   ],
   employer: [
     'certificates:verify',
@@ -148,7 +151,7 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ],
   student: [
     'certificates:read:own',
-    'verification:read:own',
+    'verification:read',
   ],
   public: [
     'verification:public',
