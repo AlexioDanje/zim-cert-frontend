@@ -1,114 +1,27 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User, UserRole, LoginCredentials, AuthContextType } from '../types/auth';
+import { api } from '../services/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for national certificate system demo
-const MOCK_USERS: Record<string, User> = {
-  'ministry@education.gov': {
-    id: '1',
-    email: 'ministry@education.gov',
-    name: 'Dr. Sarah Minister',
-    role: 'ministry_admin',
-    organizationId: 'ministry-education',
-    organizationName: 'Ministry of Education',
-    institutionType: 'ministry',
-    permissions: ['*'], // Full system access
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
-  'admin@university.edu': {
-    id: '2',
-    email: 'admin@university.edu',
-    name: 'Prof. John Registrar',
-    role: 'institution_admin',
-    organizationId: 'org-university',
-    organizationName: 'National University',
-    institutionType: 'university',
-    permissions: [
-      'certificates:create',
-      'certificates:read',
-      'certificates:update',
-      'certificates:revoke',
-      'students:create',
-      'students:read',
-      'students:update',
-      'programs:create',
-      'programs:read',
-      'programs:update',
-      'programs:delete',
-      'reports:read',
-      'bulk:create',
-      'institution:manage',
-    ],
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
-  'staff@university.edu': {
-    id: '3',
-    email: 'staff@university.edu',
-    name: 'Mary Certificate Officer',
-    role: 'institution_staff',
-    organizationId: 'org-university',
-    organizationName: 'National University',
-    institutionType: 'university',
-    permissions: [
-      'certificates:create',
-      'certificates:read',
-      'students:read',
-      'programs:read',
-    ],
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
-  'auditor@education.gov': {
-    id: '4',
-    email: 'auditor@education.gov',
-    name: 'David Compliance Officer',
-    role: 'auditor',
-    organizationId: 'ministry-education',
-    organizationName: 'Ministry of Education - Audit Division',
-    institutionType: 'auditor',
-    permissions: [
-      'certificates:read',
-      'students:read',
-      'programs:read',
-      'reports:read',
-      'audit:read',
-    ],
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
-  'hr@company.com': {
-    id: '5',
-    email: 'hr@company.com',
-    name: 'Lisa HR Manager',
-    role: 'employer',
-    organizationId: 'org-company',
-    organizationName: 'Tech Solutions Ltd',
-    institutionType: 'employer',
-    permissions: [
-      'certificates:verify',
-      'verification:read',
-    ],
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
-  'student@university.edu': {
-    id: '6',
-    email: 'student@university.edu',
-    name: 'Alex Student',
-    role: 'student',
-    organizationId: 'org-university',
-    organizationName: 'National University',
-    institutionType: 'university',
-    permissions: [
-      'certificates:read:own',
-      'verification:read:own',
-    ],
-    isActive: true,
-    createdAt: '2025-01-01T00:00:00Z',
-  },
+// Demo MOCK_USERS removed; backend auth is used
+
+// Helper function to determine institution type from role
+const getInstitutionType = (role: UserRole): string => {
+  switch (role) {
+    case 'ministry_admin':
+    case 'auditor':
+      return 'ministry';
+    case 'institution_admin':
+    case 'institution_staff':
+      return 'university';
+    case 'employer':
+      return 'employer';
+    case 'student':
+      return 'university';
+    default:
+      return 'unknown';
+  }
 };
 
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -165,16 +78,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('zimcert_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-      } catch (err) {
-        localStorage.removeItem('zimcert_user');
+    const initializeAuth = async () => {
+      const savedUser = localStorage.getItem('zimcert_user');
+      const accessToken = localStorage.getItem('zimcert_access_token');
+      const refreshToken = localStorage.getItem('zimcert_refresh_token');
+
+      if (savedUser && accessToken) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          
+          // Verify token is still valid by calling profile endpoint
+          try {
+            await api.get('/auth/profile');
+          } catch (err) {
+            // Token is invalid, try to refresh
+            if (refreshToken) {
+              try {
+                const response = await api.post('/auth/refresh', { refreshToken });
+                if (response.data.success) {
+                  const { accessToken: newAccessToken } = response.data.data;
+                  localStorage.setItem('zimcert_access_token', newAccessToken);
+                } else {
+                  throw new Error('Refresh failed');
+                }
+              } catch (refreshErr) {
+                // Refresh failed, clear everything
+                localStorage.removeItem('zimcert_user');
+                localStorage.removeItem('zimcert_access_token');
+                localStorage.removeItem('zimcert_refresh_token');
+                setUser(null);
+              }
+            } else {
+              // No refresh token, clear everything
+              localStorage.removeItem('zimcert_user');
+              localStorage.removeItem('zimcert_access_token');
+              setUser(null);
+            }
+          }
+        } catch (err) {
+          localStorage.removeItem('zimcert_user');
+          localStorage.removeItem('zimcert_access_token');
+          localStorage.removeItem('zimcert_refresh_token');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
@@ -182,41 +133,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call real authentication API
+      const response = await api.post('/auth/login', {
+        email: credentials.email,
+        password: credentials.password,
+      });
 
-      // Check if user exists
-      const user = MOCK_USERS[credentials.email];
-      if (!user) {
-        throw new Error('Invalid email or password');
+      if (!response.data.success) {
+        throw new Error(response.data.error?.message || response.data.message || 'Login failed');
       }
 
-      // For demo purposes, accept any password
-      if (user.role !== credentials.role) {
-        throw new Error('Invalid role for this user');
-      }
+      const { token, refreshToken, user: userData } = response.data.data;
 
-      // Set user permissions based on role
-      const userWithPermissions = {
-        ...user,
-        permissions: ROLE_PERMISSIONS[user.role],
+      // Store tokens
+      localStorage.setItem('zimcert_access_token', token);
+      localStorage.setItem('zimcert_refresh_token', refreshToken);
+
+      // Transform backend user data to frontend format
+      const user: User = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.profileData?.fullName || userData.email,
+        role: userData.role,
+        organizationId: userData.organizationId,
+        organizationName: userData.profileData?.institutionName || 
+                         userData.profileData?.companyName || 
+                         'Unknown Organization',
+        institutionType: getInstitutionType(userData.role) as 'university' | 'college' | 'institute' | 'ministry' | 'auditor' | 'employer',
+        permissions: ROLE_PERMISSIONS[userData.role],
+        isActive: userData.status === 'active',
+        createdAt: userData.createdAt || userData.createdAtIso,
       };
 
-      setUser(userWithPermissions);
-      localStorage.setItem('zimcert_user', JSON.stringify(userWithPermissions));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setUser(user);
+      localStorage.setItem('zimcert_user', JSON.stringify(user));
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Login failed';
       setError(errorMessage);
-      throw err;
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setError(null);
-    localStorage.removeItem('zimcert_user');
+  const logout = async () => {
+    try {
+      // Call logout API to invalidate refresh token
+      const refreshToken = localStorage.getItem('zimcert_refresh_token');
+      if (refreshToken) {
+        await api.post('/auth/logout', { refreshToken });
+      }
+    } catch (err) {
+      // Ignore logout API errors, still clear local state
+      console.warn('Logout API call failed:', err);
+    } finally {
+      // Clear local state regardless of API call result
+      setUser(null);
+      setError(null);
+      localStorage.removeItem('zimcert_user');
+      localStorage.removeItem('zimcert_access_token');
+      localStorage.removeItem('zimcert_refresh_token');
+    }
   };
 
   const hasPermission = (permission: string): boolean => {

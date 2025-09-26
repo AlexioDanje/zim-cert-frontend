@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { 
   EyeIcon, 
@@ -15,7 +15,6 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
-import type { UserRole } from '../types/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -24,55 +23,11 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-// Institution-based login - role is determined by email domain and credentials
-const INSTITUTION_INFO = {
-  ministry: {
-    name: 'Ministry of Education',
-    description: 'Government oversight and administration',
-    icon: ShieldCheckIcon,
-    color: 'from-red-500 to-red-600',
-    domains: ['@education.gov'],
-    sampleEmail: 'ministry@education.gov'
-  },
-  university: {
-    name: 'Educational Institutions',
-    description: 'Universities, colleges, and institutes',
-    icon: AcademicCapIcon,
-    color: 'from-emerald-500 to-emerald-600',
-    domains: ['@university.edu', '@college.edu', '@institute.edu'],
-    sampleEmail: 'admin@university.edu'
-  },
-  employer: {
-    name: 'Employers & Organizations',
-    description: 'HR departments and verification services',
-    icon: BuildingOfficeIcon,
-    color: 'from-orange-500 to-orange-600',
-    domains: ['@company.com', '@corp.com'],
-    sampleEmail: 'hr@company.com'
-  },
-  student: {
-    name: 'Students & Graduates',
-    description: 'Certificate holders and applicants',
-    icon: UserIcon,
-    color: 'from-teal-500 to-teal-600',
-    domains: ['student@'],
-    sampleEmail: 'student@university.edu'
-  }
-};
-
-// Demo credentials mapped by email
-const DEMO_ACCOUNTS = {
-  'ministry@education.gov': { role: 'ministry_admin' as UserRole, password: 'ministry123' },
-  'admin@university.edu': { role: 'institution_admin' as UserRole, password: 'admin123' },
-  'staff@university.edu': { role: 'institution_staff' as UserRole, password: 'staff123' },
-  'auditor@education.gov': { role: 'auditor' as UserRole, password: 'auditor123' },
-  'hr@company.com': { role: 'employer' as UserRole, password: 'employer123' },
-  'student@university.edu': { role: 'student' as UserRole, password: 'student123' },
-};
+// (Institution selector removed; backend determines role)
 
 export default function LoginSimple() {
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedInstitution, setSelectedInstitution] = useState<keyof typeof INSTITUTION_INFO>('university');
+  // No institution selection; simple email/password login
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -82,17 +37,9 @@ export default function LoginSimple() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
-      // Determine role from email
-      const demoAccount = DEMO_ACCOUNTS[data.email as keyof typeof DEMO_ACCOUNTS];
-      if (!demoAccount) {
-        toast.error('Account not found. Please use a demo account.');
-        return;
-      }
-
       await login({
         email: data.email,
         password: data.password,
-        role: demoAccount.role,
       });
 
       toast.success('Login successful!');
@@ -102,11 +49,7 @@ export default function LoginSimple() {
     }
   };
 
-  const fillDemoCredentials = (institutionKey: keyof typeof INSTITUTION_INFO) => {
-    const institution = INSTITUTION_INFO[institutionKey];
-    setValue('email', institution.sampleEmail);
-    setValue('password', DEMO_ACCOUNTS[institution.sampleEmail as keyof typeof DEMO_ACCOUNTS]?.password || '');
-  };
+  // Demo autofill removed
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
@@ -155,42 +98,7 @@ export default function LoginSimple() {
             <p className="text-gray-600 dark:text-gray-400">Choose your institution type</p>
           </div>
 
-          {/* Institution Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Institution Type
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(INSTITUTION_INFO).map(([institutionKey, info]) => {
-                const IconComponent = info.icon;
-                return (
-                  <button
-                    key={institutionKey}
-                    type="button"
-                    onClick={() => {
-                      setSelectedInstitution(institutionKey as keyof typeof INSTITUTION_INFO);
-                      fillDemoCredentials(institutionKey as keyof typeof INSTITUTION_INFO);
-                    }}
-                    className={`p-3 rounded-lg border-2 transition-all duration-200 ${
-                      selectedInstitution === institutionKey
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 bg-gradient-to-r ${info.color} rounded-lg flex items-center justify-center mx-auto mb-2`}>
-                      <IconComponent className="w-4 h-4 text-white" />
-                    </div>
-                    <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">
-                      {info.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {info.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Institution selection removed */}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -206,7 +114,7 @@ export default function LoginSimple() {
                   {...register('email')}
                   type="email"
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
-                  placeholder={INSTITUTION_INFO[selectedInstitution].sampleEmail}
+                  placeholder="you@example.com"
                 />
               </div>
               {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
@@ -249,6 +157,47 @@ export default function LoginSimple() {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          {/* Registration Links */}
+          <div className="mt-6 space-y-3">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                  Don't have an account?
+                </span>
+              </div>
+            </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link
+                  to="/register?type=student"
+                  className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <AcademicCapIcon className="w-4 h-4 mr-2" />
+                  Student Registration
+                </Link>
+                <Link
+                  to="/register?type=institution"
+                  className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+                  Institution Registration
+                </Link>
+              </div>
+
+              <div className="flex justify-center">
+                <Link
+                  to="/register?type=employer"
+                  className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+                  Employer Registration
+                </Link>
+              </div>
+          </div>
 
           {/* Demo Notice */}
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">

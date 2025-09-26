@@ -240,7 +240,7 @@ export default function InstitutionManagement() {
       });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to create institution');
+      toast.error(error?.response?.data?.error?.message || error?.response?.data?.message || error?.message || 'Failed to create institution');
     },
   });
 

@@ -51,7 +51,7 @@ export default function Programs() {
       setNewCredits('');
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.message || 'Failed to create program');
+      toast.error(e?.response?.data?.error?.message || e?.response?.data?.message || e?.message || 'Failed to create program');
     },
   });
 

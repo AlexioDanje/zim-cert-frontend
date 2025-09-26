@@ -16,11 +16,33 @@ export function handleApiError(error: unknown): ApiError {
     if (response) {
       const { status, data } = response;
       
+      // Handle different error response formats from backend
+      let errorMessage = getErrorMessageByStatus(status);
+      
+      if (data) {
+        // Format 1: { error: { message: "..." } }
+        if (data.error && data.error.message) {
+          errorMessage = data.error.message;
+        }
+        // Format 2: { message: "..." }
+        else if (data.message) {
+          errorMessage = data.message;
+        }
+        // Format 3: { error: "..." } (string)
+        else if (typeof data.error === 'string') {
+          errorMessage = data.error;
+        }
+        // Format 4: Direct error message in data
+        else if (typeof data === 'string') {
+          errorMessage = data;
+        }
+      }
+      
       return {
-        message: data?.message || getErrorMessageByStatus(status),
-        code: data?.code,
+        message: errorMessage,
+        code: data?.code || data?.error?.name,
         status,
-        details: data?.details,
+        details: data?.details || data?.error,
       };
     }
 
@@ -64,6 +86,8 @@ function getErrorMessageByStatus(status: number): string {
       return ERROR_MESSAGES.NOT_FOUND;
     case 408:
       return ERROR_MESSAGES.TIMEOUT;
+    case 409:
+      return 'A conflict occurred. The resource already exists or has been modified.';
     case 500:
     case 502:
     case 503:

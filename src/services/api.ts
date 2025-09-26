@@ -52,7 +52,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Add authentication token
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('zimcert_access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -141,6 +141,17 @@ function shouldRetry(error: AxiosError): boolean {
   return retryableStatuses.includes(error.response.status);
 }
 
+// Resolve organization id (placeholder; replace with actual org selection if available)
+async function getOrganizationId(): Promise<string | undefined> {
+  // Try to read from localStorage/session or return default
+  try {
+    const org = localStorage.getItem('zimcert_org_id');
+    return org || 'org-university';
+  } catch {
+    return 'org-university';
+  }
+}
+
 // Enhanced API wrapper with error handling
 async function apiCall<T>(
   requestFn: () => Promise<AxiosResponse<ApiResponse<T>>>
@@ -166,6 +177,23 @@ async function apiCall<T>(
     // Fallback for legacy API responses
     return response.data as T;
   } catch (error) {
+    // If it's already a processed error from our API response, just re-throw it
+    if (error instanceof Error && error.message !== 'API request failed') {
+      throw error;
+    }
+    
+    // Otherwise, handle it as an Axios error
+    const apiError = handleApiError(error);
+    throw new Error(apiError.message);
+  }
+}
+
+// Helper function to handle direct API calls with proper error processing
+async function handleDirectApiCall<T>(requestFn: () => Promise<AxiosResponse<T>>): Promise<T> {
+  try {
+    const response = await requestFn();
+    return response.data;
+  } catch (error) {
     const apiError = handleApiError(error);
     throw new Error(apiError.message);
   }
@@ -180,17 +208,22 @@ export const certificateApi = {
   },
 
   search: async (filters: SearchFilters): Promise<{ items: Certificate[]; total: number; hasMore?: boolean }> => {
-    const response = await api.post('/certificates/search', filters);
-    const data = response.data || {};
-    
-    // Handle new API response format with nested data
-    const actualData = data.data || data;
-    
-    return {
-      items: actualData.certificates || actualData.items || [],
-      total: typeof actualData.total === 'number' ? actualData.total : (actualData.items?.length || actualData.certificates?.length || 0),
-      hasMore: actualData.hasMore,
-    };
+    return await handleDirectApiCall(async () => {
+      const response = await api.post('/certificates/search', filters);
+      const data = response.data || {};
+      
+      // Handle new API response format with nested data
+      const actualData = data.data || data;
+      
+      return {
+        ...response,
+        data: {
+          items: actualData.certificates || actualData.items || [],
+          total: typeof actualData.total === 'number' ? actualData.total : (actualData.items?.length || actualData.certificates?.length || 0),
+          hasMore: actualData.hasMore,
+        }
+      };
+    });
   },
 
   getById: async (id: string): Promise<Certificate> => {
@@ -211,13 +244,26 @@ export const certificateApi = {
   },
 
   issue: async (data: IssueCertificateForm): Promise<Certificate> => {
-    const response = await api.post('/certificates', data);
-    return response.data;
+    const hasNationalIdOnly = data.nationalId;
+  
+    if (hasNationalIdOnly) {
+      return await apiCall(async () => {
+        const response = await api.post('/certificates/issue-by-national-id', data);
+        return response.data?.data || response.data;
+      });
+    } else {
+      return await apiCall(async () => {
+        const response = await api.post('/certificates', data);
+        return response.data;
+      });
+    }
   },
 
   bulkIssue: async (data: BulkIssueForm): Promise<BulkIssueResult> => {
-    const response = await api.post('/certificates/bulk-issue', data);
-    return response.data;
+    return await apiCall(async () => {
+      const response = await api.post('/certificates/bulk-issue', data);
+      return response.data;
+    });
   },
 
   reissue: async (data: {
@@ -287,7 +333,9 @@ export const programApi = {
   list: async (organizationId?: string): Promise<Program[]> => {
     const params = organizationId ? { organizationId } : {};
     const response = await api.get('/programs', { params });
-    return response.data.items || response.data;
+    // Handle nested response structure
+    const responseData = response.data.data || response.data;
+    return responseData.programs || responseData.items || responseData;
   },
 
   create: async (data: Omit<Program, 'id'>): Promise<Program> => {
@@ -309,7 +357,9 @@ export const programApi = {
 export const studentApi = {
   list: async (): Promise<Student[]> => {
     const response = await api.get('/students');
-    return response.data.items || response.data;
+    // Handle nested response structure
+    const responseData = response.data.data || response.data;
+    return responseData.students || responseData.items || responseData;
   },
 
   importCsv: async (data: { csvData: string; fieldMapping: Record<string, string> }): Promise<{ success: boolean; message: string }> => {
@@ -374,6 +424,16 @@ export const bulkApi = {
       responseType: 'blob'
     });
     return response.data;
+  },
+};
+
+// Institution API
+export const institutionApi = {
+  list: async (): Promise<any[]> => {
+    const response = await api.get('/institutions');
+    // Handle nested response structure
+    const responseData = response.data.data || response.data;
+    return responseData.institutions || responseData.items || responseData;
   },
 };
 

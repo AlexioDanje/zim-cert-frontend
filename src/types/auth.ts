@@ -24,7 +24,7 @@ export interface User {
 export interface LoginCredentials {
   email: string;
   password: string;
-  role: UserRole;
+  role?: UserRole;
 }
 
 export interface AuthState {

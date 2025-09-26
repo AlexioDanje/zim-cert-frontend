@@ -81,28 +81,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       name: 'Certificates', 
       href: '/certificates', 
       icon: DocumentTextIcon, 
-      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor'],
+      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor', 'student'],
       requiredPermissions: ['certificates:read']
     },
     { 
       name: 'Issue Certificate', 
       href: '/issue', 
       icon: PlusIcon, 
-      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff'],
+      requiredRoles: ['institution_admin', 'institution_staff'],
       requiredPermissions: ['certificates:create']
     },
     { 
       name: 'Bulk Operations', 
       href: '/bulk', 
       icon: ChartBarIcon, 
-      requiredRoles: ['ministry_admin', 'institution_admin'],
+      requiredRoles: ['institution_admin'],
       requiredPermissions: ['bulk:create']
     },
     { 
       name: 'Programs', 
       href: '/programs', 
       icon: AcademicCapIcon, 
-      requiredRoles: ['ministry_admin', 'institution_admin', 'institution_staff', 'auditor'],
+      requiredRoles: ['institution_admin', 'institution_staff', 'auditor'],
       requiredPermissions: ['programs:read']
     },
     { 

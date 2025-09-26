@@ -229,7 +229,7 @@ export interface IssueCertificateForm {
   templateId: string;
   graduationYear: string;
   grade?: string;
-  additionalFields?: Record<string, string>;
+  additionalFields?: Record<string, string | number | boolean | null>;
 }
 
 export interface BulkIssueForm {
@@ -237,7 +237,7 @@ export interface BulkIssueForm {
   csvData: string;
   templateId: string;
   programId: string;
-  fieldMapping?: Record<string, string>;
+  fieldMapping?: Record<string, string | number | boolean | null>;
 }
 
 // Error Types

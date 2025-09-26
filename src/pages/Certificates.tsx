@@ -27,7 +27,7 @@ export default function Certificates() {
   const [pageSize] = useState(10);
 
   const searchFilters: SearchFilters = {
-    organizationId: user?.organizationId,
+    organizationId: user.organizationName,
     query: searchTerm,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page: currentPage,
@@ -35,7 +35,7 @@ export default function Certificates() {
   };
 
   const { data: searchResult, isLoading, error } = useQuery({
-    queryKey: ['certificates-search', user?.organizationId, searchFilters],
+    queryKey: ['certificates-search', user.organizationName, searchFilters],
     queryFn: () => certificateApi.search(searchFilters),
   });
 

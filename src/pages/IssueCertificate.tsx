@@ -114,7 +114,7 @@ export default function IssueCertificate() {
       navigate('/certificates');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to issue certificate');
+      toast.error(error instanceof Error ? error.message : 'Failed to issue certificate');
     },
   });
 
@@ -176,12 +176,11 @@ export default function IssueCertificate() {
       const certText = getCertificateText(selectedProgram);
       
       const issueData = {
-        organizationId: user?.organizationId,
-        studentId: data.nationalId,
+        organizationId: user.organizationName || 'org-university',
+        nationalId: data.nationalId,
         programId: data.programId,
-        templateId: 'national-template', // Always use national template
+        templateId: 'template-bachelor-degree',
         issueDateIso: new Date().toISOString(),
-        studentReference: data.nationalId,
         fields: {
           studentName: data.studentName,
           nationalId: data.nationalId,
@@ -193,8 +192,8 @@ export default function IssueCertificate() {
           badgeText: certText.badgeText,
           completionText: certText.completionText,
           ...additionalFieldsObj,
-        } as Record<string, string>,
-      };
+        } as Record<string, string | number | boolean | null>,
+      } as any;
 
       await issueMutation.mutateAsync(issueData as any);
     } finally {

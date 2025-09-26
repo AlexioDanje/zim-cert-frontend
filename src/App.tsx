@@ -9,6 +9,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Registration from './pages/Registration';
 import Dashboard from './pages/Dashboard';
 import UnifiedDashboard from './pages/UnifiedDashboard';
 import Verify from './pages/Verify';
@@ -71,6 +72,7 @@ function App() {
                   {/* Public routes */}
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Registration />} />
                   <Route path="/verify" element={<Verify />} />
                   <Route path="/verify/:publicId" element={<Verify />} />
                   
@@ -200,26 +202,3 @@ function App() {
 }
 
 export default App;
-                  
-                  {/* Public routes with limited access */}
-                  <Route path="/public" element={
-                    <Layout>
-                      <UnifiedDashboard />
-                    </Layout>
-                  } />
-                  
-                  {/* Catch all route */}
-                  <Route path="*" element={
-                    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-                      <div className="text-center">
-                        <h1 className="text-6xl font-bold text-gray-900 dark:text-white">404</h1>
-                        <p className="text-xl text-gray-600 dark:text-gray-400 mt-4">Page not found</p>
-                        <a 
-                          href="/" 
-                          className="mt-6 inline-block bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors"
-                        >
-                          Go Home
-                        </a>
-                      </div>
-                    </div>
-                  } />

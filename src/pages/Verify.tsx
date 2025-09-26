@@ -547,7 +547,7 @@ export default function Verify() {
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-8">
                     <div className="flex items-center mb-6">
                       <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Verified Certificate</h2>
+                      <h2 className="text-2xl font-bold uppercase italic text-gray-900 dark:text-white">Digital Certificate</h2>
                     </div>
                     
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-blue-300 dark:border-gray-500">
@@ -568,20 +568,16 @@ export default function Verify() {
                         
                         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-sm">
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Type:</span>
-                            <div className="font-medium text-gray-900 dark:text-white">{result?.certificate?.payload?.fields?.certificateType || 'Certificate'}</div>
+                            <span className="text-gray-500 dark:text-gray-400">Program:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">{result?.certificate?.payload?.fields?.programName || 'N/A'}</div>
                           </div>
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Institution:</span>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {(result?.certificate as any)?.templateSnapshot?.branding?.issuerName || 'ZIM Institute of Technology'}
-                            </div>
+                            <span className="text-gray-500 dark:text-gray-400">Student:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">{result?.certificate?.payload?.fields?.studentName || 'N/A'}</div>
                           </div>
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Issue Date:</span>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {result?.certificate?.createdAtIso ? new Date(result.certificate.createdAtIso).toLocaleDateString() : '-'}
-                            </div>
+                            <span className="text-gray-500 dark:text-gray-400">Grade:</span>
+                            <div className="font-medium text-gray-900 dark:text-white">{result?.certificate?.payload?.fields?.grade || 'N/A'}</div>
                           </div>
                         </div>
                       </div>
@@ -666,12 +662,20 @@ export default function Verify() {
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setShowResult(false)}></div>
             <div className="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-indigo-50 to-blue-50">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <ShieldCheckIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                  Verification Result
-                </h3>
-                <button onClick={resetForm} className="text-gray-600 hover:text-gray-800">Close</button>
+              <div className="px-6 py-4 border-b bg-gradient-to-r from-indigo-50 to-blue-50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <ShieldCheckIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                    {result?.certificates?.length > 1 
+                      ? `Found ${result.certificates.length} Certificates` 
+                      : 'Verification Result'
+                    }
+                  </h3>
+                  <button onClick={resetForm} className="text-gray-600 hover:text-gray-800">Close</button>
+                </div>
+                {result?.certificates?.length > 1 && (
+                  <p className="text-sm text-gray-600 mt-1">Multiple certificates found for this national ID</p>
+                )}
               </div>
               <div
                 className="p-6"
@@ -700,87 +704,60 @@ export default function Verify() {
                   </div>
                 ) : result?.valid === true ? (
                   <div className="space-y-6">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center">
-                      <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
-                        <CheckCircleIcon className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-emerald-800 font-semibold">
-                          {result?.certificates?.length > 1 
-                            ? `Found ${result.certificates.length} Certificates` 
-                            : 'Certificate Verified Successfully'
-                          }
-                        </div>
-                        <div className="text-emerald-700 text-sm">
-                          {result?.certificates?.length > 1 
-                            ? 'Multiple certificates found for this national ID'
-                            : 'This certificate is authentic and valid.'
-                          }
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Display current certificate with pagination */}
                     {currentCertificate && (
                       <div className="space-y-6">
-                        {/* Certificate Card */}
-                        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <DocumentTextIcon className="h-5 w-5 text-emerald-600 mr-2" />
-                                Certificate Information
-                              </h5>
-                              <dl className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Certificate ID</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.id}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Public ID</dt>
-                                  <dd className="text-sm font-mono text-gray-900">{currentCertificate.publicUrlId}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Issuing Institution</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.organizationId}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2">
-                                  <dt className="text-sm font-medium text-gray-500">Issue Date</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.createdAtIso ? new Date(currentCertificate.createdAtIso).toLocaleDateString() : '-'}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2">
-                                  <dt className="text-sm font-medium text-gray-500">Status</dt>
-                                  <dd className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">{currentCertificate.status}</dd>
-                                </div>
-                              </dl>
+                        {/* Certificate Preview */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-8">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center">
+                              <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-3" />
+                              <h2 className="text-2xl font-bold uppercase italic text-gray-900 dark:text-white">Digital Certificate</h2>
                             </div>
-
-                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                              <h5 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                <UserIcon className="h-5 w-5 text-emerald-600 mr-2" />
-                                Student Information
-                              </h5>
-                              <dl className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Student Name</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.studentName || '-'}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Program</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.programName || '-'}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                                  <dt className="text-sm font-medium text-gray-500">Graduation Year</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.graduationYear || '-'}</dd>
-                                </div>
-                                <div className="flex justify-between items-center py-2">
-                                  <dt className="text-sm font-medium text-gray-500">Grade</dt>
-                                  <dd className="text-sm font-bold text-gray-900">{currentCertificate.payload?.fields?.grade || '-'}</dd>
-                                </div>
-                              </dl>
+                            <div className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                              <LockClosedIcon className="w-4 h-4 mr-2" />
+                              {currentCertificate.publicUrlId || 'N/A'}
                             </div>
                           </div>
+                          
+                          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border-2 border-dashed border-blue-300 dark:border-gray-500">
+                            <div className="text-center space-y-4">
+                              <div className="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                {currentCertificate.payload?.fields?.certificateType || 'Certificate'}
+                              </div>
+                              
+                              <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                                {currentCertificate.payload?.fields?.badgeText || currentCertificate.payload?.fields?.certificateType || 'Certificate'}
+                              </h3>
+                              
+                              <div className="max-w-md mx-auto">
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  This is to certify that <strong>{currentCertificate.payload?.fields?.studentName || '[Student Name]'}</strong> {currentCertificate.payload?.fields?.completionText || 'has successfully completed'} <strong>{currentCertificate.payload?.fields?.programName || '[Program Name]'}</strong>
+                                </p>
+                              </div>
+                              
+                              <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-sm">
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Grade:</span>
+                                  <div className="font-medium text-gray-900 dark:text-white">{currentCertificate.payload?.fields?.grade || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Issue Date:</span>
+                                  <div className="font-medium text-gray-900 dark:text-white">{currentCertificate.createdAtIso ? new Date(currentCertificate.createdAtIso).toLocaleDateString() : 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Issuing Institution:</span>
+                                  <div className="font-medium text-gray-900 dark:text-white">{currentCertificate.organizationId || 'N/A'}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+                            ✨ This certificate has been cryptographically verified and is authentic
+                          </div>
                         </div>
+
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
